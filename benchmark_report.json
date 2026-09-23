@@ -1,0 +1,26 @@
+{
+  "benchmark": "Signalpost 100-Company Evaluation",
+  "timestamp": "2026-09-23T15:56:37.968677Z",
+  "input_count": 100,
+  "emitted_envelopes": 100,
+  "wall_clock_seconds": 12.63,
+  "p50_latency_ms": 0,
+  "p95_latency_ms": 0,
+  "requests_used": 0,
+  "request_limit": 2000,
+  "declared_api_cost_usd": 0.0,
+  "cost_limit_usd": 10.0,
+  "contract_validation_passed": true,
+  "contract_errors": [],
+  "idempotent_refresh_passed": true,
+  "refresh_false_changes": 0,
+  "qualification_checks": {
+    "exactly_100_envelopes": true,
+    "runtime_under_45_min": true,
+    "requests_under_2000": true,
+    "cost_under_10_usd": true,
+    "contract_valid": true,
+    "refresh_idempotent": true
+  },
+  "all_quality_gates_passed": true
+}

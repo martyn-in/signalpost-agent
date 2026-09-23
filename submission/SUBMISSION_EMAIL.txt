@@ -1,0 +1,30 @@
+To: submit@builderr.ai
+Subject: Signalpost Round 1 submission
+
+Hi Builderr Team,
+
+Please find our official submission for the Signalpost Company Intelligence challenge:
+
+Agent name: Signalpost Norwegian Company Research Agent
+Repository URL: <INSERT_REPOSITORY_URL_HERE>
+Exact commit hash: 21720400de07f5de26028cea67c8ca92015a6e3a
+Completed profile count (minimum 1,000): 1,000
+Organisation-number manifest URL / file: submission/organisation_numbers.txt
+Envelopes file: submission/envelopes.jsonl
+Profiles file: submission/profiles.jsonl
+
+One-command run instruction:
+python3 scripts/run_competition_batch.py --organisations data/input/benchmark-100.jsonl --bulk data/input/signalpost-universe.jsonl.gz --profiles-output out/profiles.jsonl --output out/envelopes.jsonl --report out/run-report.json --run-id eval-001 --expected-count 100
+
+Models / APIs / licences:
+- Deterministic extraction: BeautifulSoup4, lxml, extruct, trafilatura, pypdf, Pydantic v2
+- Authoritative APIs: Brønnøysundregistrene (NLOD Norwegian Public Data Licence)
+- Direct company web crawling with strict SSRF & robots compliance
+- Expected cost per 100-company run: $0.00 (Standard run uses $0 external API spend, well under the $10 cap)
+
+Contact for results:
+Name: <YOUR_NAME>
+Email: <YOUR_EMAIL>
+
+Best regards,
+Signalpost Team
