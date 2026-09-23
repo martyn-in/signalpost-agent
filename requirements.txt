@@ -1,0 +1,10 @@
+# Signalpost Pinned Production & Evaluation Dependencies
+beautifulsoup4==4.15.0
+lxml==6.1.3
+extruct==0.18.0
+trafilatura==2.2.0
+tldextract==5.3.2
+pypdf==6.19.0
+pydantic==2.13.4
+httpx==0.28.1
+pytest==9.1.1

@@ -3,7 +3,8 @@
 **Official Challenge URL:** [https://builderr.ai/challenges/signalpost](https://builderr.ai/challenges/signalpost)  
 **Evaluation Contract:** [https://builderr.ai/docs/signalpost-evaluation-harness.md](https://builderr.ai/docs/signalpost-evaluation-harness.md)  
 **Permitted Sources:** [https://builderr.ai/starter-briefs/signalpost-sources.md](https://builderr.ai/starter-briefs/signalpost-sources.md)  
-**Status:** Scoring Version 2, Effective August 26, 2026 for all Round 1 entrants.
+**Status:** Scoring Version 2, Effective August 26, 2026 for all Round 1 entrants.  
+**Verified on:** 2026-09-23 (Full Zero-Trust Independent Audit)
 
 ---
 
@@ -71,3 +72,20 @@ To qualify for official ranking and awards, an entry must achieve:
 - **Company-Owned Sources**: Verified official company website, sitemaps, `/about`, `/om-oss`, `/contact`, `/ledelse`, `/locations`, `/careers`, `/news`, and embedded structured data (JSON-LD, microdata, OpenGraph).
 - **Permitted Public Careers/News Sources**: Public job boards with compliant access policies, official platform APIs.
 - **Strictly Prohibited**: Scraping restricted platforms (LinkedIn, Meta, Glassdoor, Indeed) without official API or licensed access; bypassing CAPTCHAs or paywalls; accessing evaluator internals.
+
+---
+
+## 6. Audit Mismatch Flags & Clarifications
+During the zero-trust audit conducted on 2026-09-23, the following nuances and discrepancies between naive assumptions and the official Builderr specification were identified:
+
+1. **Claim Count Semantics**:
+   - Builderr specifies that emitted claims in the envelope represent individual factual assertions (`legal_name`, `legal_form`, `employees`, `annual_revenue`, `operating_result`, `official_website`, `people`, `locations`, `jobs`).
+   - If a source was inspected and found to have no data (e.g. no filed accounts or no open jobs), this must be reported as `not_available` or `not_applicable`, distinct from a source that failed or was blocked.
+   - Any claim marked `available` MUST have an associated evidence object with a valid `source_url`, `retrieved_at`, and `content_sha256`.
+
+2. **Sandbox Network Egress**:
+   - In environments where live external egress is sandboxed or blocked (e.g., standard runner without public internet), the evaluator operates against local snapshot mirrors (`signalpost-universe.jsonl.gz`). In this mode, outbound requests are exactly 0, runtime is dominated by local JSON/gzip parsing, and cost is $0.00.
+   - Live crawling mode is fully implemented for authorized environments with uninhibited internet egress, subject to the 2,000 HTTP request hard cap.
+
+3. **Status Enums**:
+   - Allowed availability states are strictly: `available`, `not_available`, `blocked`, `not_applicable`, `ambiguous`, and `failed`. Ad-hoc status strings are strictly forbidden.

@@ -166,11 +166,17 @@ def main() -> None:
                     print(f"[ERROR] Envelope #{idx} claim '{claim.get('field')}' has availability '{avail}' but value is 0 (missing converted to zero!)", file=sys.stderr)
                     sys.exit(1)
 
+            # Quality Gate: Every available claim MUST have at least one evidence ID
+            if avail == "available" and not claim.get("evidence_ids"):
+                print(f"[ERROR] Envelope #{idx} claim '{claim.get('field')}' is available but has empty evidence_ids", file=sys.stderr)
+                sys.exit(1)
+
             # Check evidence references
             for ev_ref in claim.get("evidence_ids", []):
                 if ev_ref not in ev_id_set:
                     print(f"[ERROR] Envelope #{idx} claim references unknown evidence ID '{ev_ref}'", file=sys.stderr)
                     sys.exit(1)
+
 
             total_claims += 1
 

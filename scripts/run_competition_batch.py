@@ -10,11 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from norway_company_agent.batch import profile_complete_for_modules, profiles_from_bulk, read_organisation_inputs, terminal_envelope, validate_envelopes  # noqa: E402
+from norway_company_agent.batch import profile_complete_for_modules, profiles_from_bulk, read_organisation_inputs  # noqa: E402
 from norway_company_agent.evidence import utc_now  # noqa: E402
 from norway_company_agent.identity import apply_website_identity_gate  # noqa: E402
 from norway_company_agent.official import fetch_official_modules  # noqa: E402
 from norway_company_agent.website import fetch_website  # noqa: E402
+from signalpost.result_contract import build_output_envelope, validate_contract_envelope  # noqa: E402
+
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:
@@ -38,7 +40,8 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--checkpoint-every", type=int, default=25)
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--modules", default="registry,accounting_obligation,registry_live,financials,roles,group,locations,website")
+    parser.add_argument("--live", action="store_true", help="Enable live network crawling modules")
+    parser.add_argument("--modules", default="registry,accounting_obligation", help="Comma-separated module list (defaults to snapshot modules)")
     args = parser.parse_args()
 
     started_at = utc_now()
@@ -52,7 +55,12 @@ def main() -> None:
         for key in ("evaluation_split", "sample_slice"):
             if key in annotations[profile["organisation_number"]]:
                 profile[key] = annotations[profile["organisation_number"]][key]
-    requested_modules = [item.strip() for item in args.modules.split(",") if item.strip()]
+    
+    if args.live and args.modules == "registry,accounting_obligation":
+        requested_modules = ["registry", "accounting_obligation", "registry_live", "financials", "roles", "group", "locations", "website"]
+    else:
+        requested_modules = [item.strip() for item in args.modules.split(",") if item.strip()]
+    
     fetch_modules = set(requested_modules) - {"registry", "accounting_obligation", "website"}
     operations = {"requests": 0, "bytes": 0, "latencies_ms": []}
 
@@ -100,10 +108,32 @@ def main() -> None:
     completed_at = utc_now()
     ordered_profiles = [state[org] for org in orgs]
     envelopes = [
-        terminal_envelope(profile, run_id=args.run_id, modules=requested_modules, started_at=started_at, completed_at=completed_at)
+        build_output_envelope(
+            profile=profile,
+            run_id=args.run_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            requests_count=profile.get("run_metrics", {}).get("requests", 0),
+            runtime_ms=sum(profile.get("run_metrics", {}).get("latencies_ms", [])) or 10,
+            cost_usd=0.0,
+        )
         for profile in ordered_profiles
     ]
-    validation = validate_envelopes(envelopes, args.expected_count)
+    all_errors = []
+    for idx, env in enumerate(envelopes):
+        errs = validate_contract_envelope(env)
+        if errs:
+            all_errors.append(f"Envelope #{idx} ({env.get('organisation_number')}): {errs}")
+
+    validation = {
+        "passed": len(all_errors) == 0 and len(envelopes) == args.expected_count,
+        "checks": {
+            "exact_expected_count": len(envelopes) == args.expected_count,
+            "unique_organisation_numbers": len(set(orgs)) == len(orgs),
+            "zero_contract_violations": len(all_errors) == 0,
+        },
+        "errors": all_errors[:5],
+    }
     write_jsonl(profiles_output, ordered_profiles)
     write_jsonl(Path(args.output), envelopes)
     latencies = sorted(operations.pop("latencies_ms"))
@@ -126,6 +156,7 @@ def main() -> None:
     Path(args.report).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     raise SystemExit(0 if validation["passed"] else 1)
+
 
 
 if __name__ == "__main__":

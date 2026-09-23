@@ -48,6 +48,9 @@ def diff_profile(previous: dict[str, Any], current: dict[str, Any]) -> list[dict
         if old_value == new_value:
             continue
         record = _evidence_for(current, field)
+        # Source errors, timeouts, or blocking mean unobserved, NOT genuine business removal
+        if new_value is None and record.get("status") in {"source_error", "failed", "blocked"}:
+            continue
         previous_record = _evidence_for(previous, field)
         changes.append({
             "organisation_number": new_org,

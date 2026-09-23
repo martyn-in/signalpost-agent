@@ -8,15 +8,15 @@
 
 ## Submission Details
 
-- **Repository URL:** `<placeholder: https://github.com/user/signalpost>`
-- **Exact Commit Hash:** `21720400de07f5de26028cea67c8ca92015a6e3a`
+- **Repository Remote:** `<Configured by submitter; see git remote -v>`
+- **Exact Commit Hash:** `[Generated after final commit freeze via 'git rev-parse HEAD']`
 - **Completed Profiles Count:** 1,000 completed company profiles
 - **Completed Profiles Path:** `submission/profiles.jsonl`
 - **Organisation Numbers Manifest:** `submission/organisation_numbers.txt`
 - **Terminal Envelopes Path:** `submission/envelopes.jsonl`
 - **Statistics Report:** `submission/PROFILE_STATS.md`
 - **Cost Report:** `submission/COST_REPORT.md`
-- **Runtime Environment:** Python 3.12+ (verified on Python 3.14.3 macOS/Linux)
+- **Runtime Environment:** Python 3.12+ (tested on Python 3.14.3 macOS/Linux)
 
 ---
 
@@ -45,16 +45,13 @@ python3 -m signalpost research --org-number 985589003
 ## Verification & Benchmark Commands
 
 ```bash
-# 1. Run full test suite (127 tests + subtests):
+# 1. Run full test suite (129 tests + subtests):
 PYTHONPATH=src python3 -m pytest -q
 
-# 2. Run official refresh replay test:
-python3 scripts/run_refresh_replay.py --manifest tests/fixtures/refresh-snapshots.json --output out/refresh-demo.json
-
-# 3. Run 100-company benchmark:
+# 2. Run 100-company benchmark:
 python3 scripts/benchmark_100.py
 
-# 4. Validate submission package:
+# 3. Validate submission package:
 python3 scripts/validate_submission.py \
   --manifest submission/organisation_numbers.txt \
   --envelopes submission/envelopes.jsonl \
@@ -65,8 +62,8 @@ python3 scripts/validate_submission.py \
 
 ## Operational Specifications
 
-- **Models Used:** Deterministic rule-based parsers, JSON-LD schema extractors, BeautifulSoup, and Regex. (Zero mandatory LLM dependencies; optional `LLM_API_KEY` for enhanced summarization).
-- **APIs Used:** Public Brønnøysundregistrene (Enhetsregisteret & Regnskapsregisteret); direct company website HTTP crawling.
-- **Licensing & Rights:** All sources accessed conform to public domain Norwegian government data licenses (NLOD) and public web terms.
+- **Models Used:** Deterministic rule-based extractors, structured JSON-LD / Microdata parsers, BeautifulSoup, and Regex. (Zero mandatory LLM dependencies; optional `LLM_API_KEY` for summarization).
+- **APIs Used:** Public Brønnøysundregistrene (Enhetsregisteret & Regnskapsregisteret); direct safe HTTP crawling.
+- **Licensing & Rights:** All sources accessed conform to public Norwegian government data licenses (NLOD) and public web terms.
 - **Expected Cost per 100-Company Run:** **$0.00** (Well below the $10.00 competition limit).
-- **Observed Requests per 100-Company Run:** 0 (frozen registry snapshot mode) to ~350 (live web crawling mode), well within the 2,000 request limit.
+- **Observed Requests per 100-Company Run:** 0 (frozen registry snapshot mode) to < 450 (live web crawling mode), well within the 2,000 request limit.

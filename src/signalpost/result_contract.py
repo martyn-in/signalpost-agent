@@ -73,8 +73,19 @@ def build_output_envelope(
         "value": emp_val,
         "availability": "available" if emp_val is not None else "not_available",
         "confidence": 1.0,
-        "evidence_ids": [ev_id],
+        "evidence_ids": [ev_id] if emp_val is not None else [],
     })
+
+    # Municipality / Location
+    muni_val = profile.get("municipality") or reg_val.get("municipality")
+    if muni_val:
+        claim_items.append({
+            "field": "municipality",
+            "value": muni_val,
+            "availability": "available",
+            "confidence": 1.0,
+            "evidence_ids": [ev_id],
+        })
 
     # 2. Financial Accounts
     fin_evidence = profile.get("evidence", {}).get("financials", {})
@@ -98,14 +109,14 @@ def build_output_envelope(
             "value": fin_records[0].get("revenue"),
             "availability": "available" if fin_records[0].get("revenue") is not None else "not_available",
             "confidence": 1.0,
-            "evidence_ids": [fin_ev_id],
+            "evidence_ids": [fin_ev_id] if fin_records[0].get("revenue") is not None else [],
         })
         claim_items.append({
             "field": "operating_result",
             "value": fin_records[0].get("operating_result"),
             "availability": "available" if fin_records[0].get("operating_result") is not None else "not_available",
             "confidence": 1.0,
-            "evidence_ids": [fin_ev_id],
+            "evidence_ids": [fin_ev_id] if fin_records[0].get("operating_result") is not None else [],
         })
     else:
         claim_items.append({
@@ -139,13 +150,22 @@ def build_output_envelope(
             "confidence": 0.95,
             "evidence_ids": [web_ev_id],
         })
-    elif website_url:
+    elif website_url and web_evidence.get("status") == "source_error":
         claim_items.append({
             "field": "official_website",
             "value": website_url,
-            "availability": "failed" if web_evidence.get("status") == "source_error" else "not_available",
+            "availability": "failed",
             "confidence": 0.5,
             "evidence_ids": [],
+        })
+    elif website_url:
+        # Website registered in official registry record
+        claim_items.append({
+            "field": "official_website",
+            "value": website_url,
+            "availability": "available",
+            "confidence": 1.0,
+            "evidence_ids": [ev_id],
         })
     else:
         claim_items.append({
@@ -155,6 +175,7 @@ def build_output_envelope(
             "confidence": 1.0,
             "evidence_ids": [],
         })
+
 
     return {
         "organisation_number": str(org_number),

@@ -75,3 +75,17 @@ class RefreshIdempotenceTests(unittest.TestCase):
         fp1 = compute_semantic_fingerprint("923609016", "employees", 42)
         fp2 = compute_semantic_fingerprint("923609016", "employees", 42)
         self.assertEqual(fp1, fp2, "Identical facts must have identical semantic fingerprints")
+
+    def test_source_error_does_not_emit_fact_removal(self):
+        # A source experiencing a 500 error / timeout is unobserved, NOT a business fact removal
+        errored_profile = copy.deepcopy(self.sample_profile)
+        errored_profile["evidence"]["roles"] = {
+            "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/923609016/roller",
+            "source_class": "official_roles",
+            "status": "source_error",
+            "error": "HTTP 500 Gateway Timeout",
+            "value": None,
+        }
+        changes = detect_typed_changes(self.sample_profile, errored_profile)
+        self.assertEqual(len(changes), 0, "Source error must not be classified as fact removal")
+

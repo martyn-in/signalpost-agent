@@ -113,6 +113,26 @@ def assess_website_identity(
     exact_homepage_name = bool(target_tokens and any(set(target_tokens).issubset(toks) for toks in homepage_token_sets))
     substantive_content = len(text_sample.strip()) >= 80
 
+    # Foreign Namesake & Jurisdiction Check (Zero Tolerance for Foreign Entities)
+    foreign_markers = {"ltd", "limited", "gmbh", "llc", "inc", "corp", "corporation", "sarl", "bv", "oy", "plc", "pty"}
+    foreign_jurisdictions = (
+        "registered in england", "companies house", "registered in delaware",
+        "handelsregister", "chambre de commerce", "uk based",
+    )
+    raw_tokens_lower = set(re.findall(r"[a-z0-9]+", normalized_candidate))
+    has_foreign_marker = bool(raw_tokens_lower & foreign_markers) or any(
+        fj in normalized_candidate for fj in foreign_jurisdictions
+    )
+
+    if has_foreign_marker and not (target_org_digits and target_org_digits in compact_candidate):
+        return {
+            "status": "related_or_uncertain",
+            "score": 0.30,
+            "publishable": False,
+            "reasons": ["Foreign legal form or non-Norwegian jurisdiction markers detected without Norwegian organisation number"],
+            "matched_tokens": overlap,
+        }
+
     if len(target_tokens) >= 2 and exact_homepage_name:
         score = 0.95
         reasons.append("All normalized legal name tokens appear together in homepage identity headers")
@@ -138,3 +158,4 @@ def assess_website_identity(
         "reasons": reasons,
         "matched_tokens": overlap,
     }
+

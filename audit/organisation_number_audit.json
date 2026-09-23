@@ -1,0 +1,10 @@
+{
+  "total_lines": 1000,
+  "unique_count": 1000,
+  "blank_lines": 0,
+  "all_valid_9_digit_format": true,
+  "valid_mod11_checksum_count": 1000,
+  "in_universe_count": 1000,
+  "all_present_in_universe": true,
+  "has_duplicates": false
+}

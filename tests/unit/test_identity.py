@@ -75,3 +75,19 @@ class IdentityResolutionTests(unittest.TestCase):
         )
         self.assertEqual(assessment["status"], "related_or_uncertain")
         self.assertFalse(assessment["publishable"])
+
+    def test_foreign_namesake_is_quarantined(self):
+        assessment = assess_website_identity(
+            company_name="Nordic Solutions AS",
+            target_org_number="955555555",
+            page_data={
+                "title": "Nordic Solutions Ltd UK",
+                "description": "UK based consulting in London",
+                "text": "Registered in England and Wales company no 12345678",
+            },
+        )
+        self.assertEqual(assessment["status"], "related_or_uncertain")
+        self.assertFalse(assessment["publishable"])
+        self.assertLessEqual(assessment["score"], 0.40)
+        self.assertTrue(any("Foreign" in r for r in assessment["reasons"]))
+

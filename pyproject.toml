@@ -5,9 +5,11 @@ requires-python = ">=3.12"
 dependencies = [
   "beautifulsoup4>=4.14,<5",
   "extruct>=0.18,<1",
+  "httpx>=0.28,<1",
   "lxml>=6,<7",
   "pydantic>=2.12,<3",
   "pypdf>=6,<7",
+  "pytest>=8,<10",
   "tldextract>=5.3,<6",
   "trafilatura>=2.0,<3",
 ]

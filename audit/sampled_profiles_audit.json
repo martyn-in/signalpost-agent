@@ -1,0 +1,572 @@
+[
+  {
+    "index": 3,
+    "org": "916340257",
+    "name": "WYSSEN NORGE AS",
+    "legal_form": "AS",
+    "employees": 6,
+    "municipality": "SOGNDAL",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 5,
+    "org": "925800023",
+    "name": "SAMEIET LENSMANNSTUNET 1",
+    "legal_form": "ESEK",
+    "employees": null,
+    "municipality": "LILLESTR\u00d8M",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 6,
+    "org": "888567232",
+    "name": "AAS ELEKTRONIKK AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "ARENDAL",
+    "website": "www.aelektronikk.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 9,
+    "org": "982669251",
+    "name": "BONDELIA I BORETTSLAG",
+    "legal_form": "BRL",
+    "employees": null,
+    "municipality": "GJ\u00d8VIK",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 22,
+    "org": "926790137",
+    "name": "MUSIKK I INNLANDET AS",
+    "legal_form": "AS",
+    "employees": 10,
+    "municipality": "GJ\u00d8VIK",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 24,
+    "org": "960711033",
+    "name": "INSBO SIRNES FARGE & INTERI\u00d8R AS",
+    "legal_form": "AS",
+    "employees": 10,
+    "municipality": "FLEKKEFJORD",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 25,
+    "org": "919455144",
+    "name": "NOT\u00d8 INVEST AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "\u00c5LESUND",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 30,
+    "org": "936514545",
+    "name": "B FRAKT AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "ASK\u00d8Y",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 32,
+    "org": "935013623",
+    "name": "MINKRYPTO AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 34,
+    "org": "931654004",
+    "name": "BLOMSTERBUTIKKEN AS",
+    "legal_form": "AS",
+    "employees": 6,
+    "municipality": "BR\u00d8NN\u00d8Y",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 36,
+    "org": "914561302",
+    "name": "APPELX AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "SARPSBORG",
+    "website": "www.appelx.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 37,
+    "org": "977539366",
+    "name": "SELVAAGS FOND TIL ALMENNYTTIGE FORM\u00c5L STI",
+    "legal_form": "STI",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 38,
+    "org": "990446539",
+    "name": "KJERRINGHOLMEN VANN OG AVL\u00d8PSLAG SA",
+    "legal_form": "SA",
+    "employees": null,
+    "municipality": "HVALER",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 39,
+    "org": "922155399",
+    "name": "SABRURA STEINKJER AS",
+    "legal_form": "AS",
+    "employees": 22,
+    "municipality": "STEINKJER",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 40,
+    "org": "999288448",
+    "name": "B\u00c6RUM EIENDOMSTAKSERING AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "B\u00c6RUM",
+    "website": "www.betakst.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 43,
+    "org": "935354293",
+    "name": "BUTIKKDRIFT UMAZABAL GUERRA AS",
+    "legal_form": "AS",
+    "employees": 30,
+    "municipality": "\u00c5S",
+    "website": "www.7-eleven.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 48,
+    "org": "925606235",
+    "name": "TRAFOVEIEN 5 BORETTSLAG",
+    "legal_form": "BRL",
+    "employees": null,
+    "municipality": "HALDEN",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 68,
+    "org": "988573949",
+    "name": "CARLIN INVEST AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "B\u00c6RUM",
+    "website": "www.carlin.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 89,
+    "org": "958589174",
+    "name": "NORDLIEN OG HEDDAL BOLIGSTIFTELSE",
+    "legal_form": "STI",
+    "employees": null,
+    "municipality": "NOTODDEN",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 95,
+    "org": "923106308",
+    "name": "LILAND KYSTFISKE AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "V\u00c5GAN",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 104,
+    "org": "933900843",
+    "name": "SUNDREHAGEN AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "NORDRE FOLLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 114,
+    "org": "920798446",
+    "name": "USTAOSET LEILIGHETER 1-8 AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "KRISTIANSAND",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 142,
+    "org": "927101327",
+    "name": "HARBY PROSJEKTSTYRING AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "HAMAR",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 228,
+    "org": "911815575",
+    "name": "GASTRO STORKJ\u00d8KKEN AS",
+    "legal_form": "AS",
+    "employees": 9,
+    "municipality": "FREDRIKSTAD",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 250,
+    "org": "912450287",
+    "name": "NAVIGATOR NORWAY AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "SANDEFJORD",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 281,
+    "org": "981463862",
+    "name": "BR\u00d8DR S\u00c6TH AS",
+    "legal_form": "AS",
+    "employees": 6,
+    "municipality": "RAUMA",
+    "website": "www.bademiljo.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 432,
+    "org": "950011904",
+    "name": "BORETTSLAGET \u00c5RVOLL \u00d8ST",
+    "legal_form": "BRL",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "www.usbl.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 558,
+    "org": "923732365",
+    "name": "FRK HOLDING AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "LILLESTR\u00d8M",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 604,
+    "org": "986905685",
+    "name": "SAMEIET KIRKEVEIEN 85",
+    "legal_form": "ESEK",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 654,
+    "org": "961194725",
+    "name": "LUSTER MEKANISKE INDUSTRI AS",
+    "legal_form": "AS",
+    "employees": 46,
+    "municipality": "LUSTER",
+    "website": "lmi-as.no",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 692,
+    "org": "999276423",
+    "name": "KROL AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 754,
+    "org": "925776041",
+    "name": "WILD GEAR AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "ASKER",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 758,
+    "org": "930386995",
+    "name": "GRITERA QUALITY AS",
+    "legal_form": "AS",
+    "employees": 12,
+    "municipality": "OSLO",
+    "website": "www.gritera.com",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form",
+      "employees"
+    ]
+  },
+  {
+    "index": 759,
+    "org": "918560971",
+    "name": "HILMA INVEST AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  },
+  {
+    "index": 913,
+    "org": "927629771",
+    "name": "ENKEL SKY AS",
+    "legal_form": "AS",
+    "employees": null,
+    "municipality": "OSLO",
+    "website": "",
+    "accounts": "2025",
+    "claims_count": 5,
+    "evidence_count": 1,
+    "available_claims": [
+      "legal_name",
+      "legal_form"
+    ]
+  }
+]
