@@ -11,7 +11,10 @@
 | :--- | :--- | :--- |
 | **Total Processed Entities** | 1,000 | 100% of manifest matched |
 | **Verified Terminal Envelopes** | 1,000 | 1:1 input/output guarantee |
-| **Total Fact Claims Published** | 5,996 | Avg 6.0 claims/company |
+| **Total Profile Fields / Claim Items** | 5,996 | Avg 6.0 fields/company |
+| **Accepted Factual Claims (Evidence-Backed)** | 3,247 | 100% verified source provenance |
+| **Missing / Not Available Items** | 2,749 | Explicit unobserved/unfiled fields |
+| **Unsupported Accepted Claims** | 0 | Zero unverified facts accepted |
 | **Total Evidence Citations** | 1,000 | 100% verified source provenance |
 | **Companies with Declared Website** | 107 (10.7%) | Official registry domain |
 | **Companies with Employee Headcount** | 144 (14.4%) | Brreg registered workforce |

@@ -6,7 +6,7 @@ Hi Builderr Team,
 Please find our official submission for the Signalpost Company Intelligence challenge:
 
 Agent name: Signalpost Norwegian Company Research Agent
-Repository URL: <INSERT_REPOSITORY_URL_HERE>
+Repository URL: https://github.com/martyn-in/signalpost-agent
 Exact commit hash: <INSERT_COMMIT_HASH_AFTER_FREEZE_VIA_GIT_REV_PARSE_HEAD>
 Completed profile count (minimum 1,000): 1,000
 Organisation-number manifest URL / file: submission/organisation_numbers.txt
@@ -23,8 +23,8 @@ Models / APIs / licences:
 - Expected cost per 100-company run: $0.00 (Standard run uses $0 external API spend, well under the $10 cap)
 
 Contact for results:
-Name: <YOUR_NAME>
-Email: <YOUR_EMAIL>
+Name: Martin
+Email: <INSERT_YOUR_CONTACT_EMAIL>
 
 Best regards,
 Signalpost Team

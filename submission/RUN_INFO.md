@@ -8,7 +8,7 @@
 
 ## Submission Details
 
-- **Repository Remote:** `<Configured by submitter; see git remote -v>`
+- **Repository Remote:** `https://github.com/martyn-in/signalpost-agent`
 - **Exact Commit Hash:** `[Generated after final commit freeze via 'git rev-parse HEAD']`
 - **Completed Profiles Count:** 1,000 completed company profiles
 - **Completed Profiles Path:** `submission/profiles.jsonl`
@@ -16,7 +16,7 @@
 - **Terminal Envelopes Path:** `submission/envelopes.jsonl`
 - **Statistics Report:** `submission/PROFILE_STATS.md`
 - **Cost Report:** `submission/COST_REPORT.md`
-- **Runtime Environment:** Python 3.12+ (tested on Python 3.14.3 macOS/Linux)
+- **Runtime Environment:** Python 3.12+ (tested directly on CPython 3.12.14 & Python 3.14.3 macOS/Linux)
 
 ---
 
@@ -45,7 +45,7 @@ python3 -m signalpost research --org-number 985589003
 ## Verification & Benchmark Commands
 
 ```bash
-# 1. Run full test suite (129 tests + subtests):
+# 1. Run full test suite (130 tests + subtests):
 PYTHONPATH=src python3 -m pytest -q
 
 # 2. Run 100-company benchmark:

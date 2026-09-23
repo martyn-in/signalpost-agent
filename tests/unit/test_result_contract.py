@@ -85,3 +85,42 @@ class ResultContractTests(unittest.TestCase):
         # website is None -> availability is "not_available"
         self.assertEqual(claims_by_field["official_website"]["availability"], "not_available")
         self.assertIsNone(claims_by_field["official_website"]["value"])
+
+        # municipality is None -> availability is "not_available"
+        self.assertEqual(claims_by_field["municipality"]["availability"], "not_available")
+        self.assertIsNone(claims_by_field["municipality"]["value"])
+
+    def test_missing_company_produces_valid_terminal_envelope(self):
+        # When an organisation number is not found in the official registry
+        missing_profile = {
+            "organisation_number": "999999999",
+            "name": None,
+            "legal_form": None,
+            "employees": None,
+            "municipality": None,
+            "evidence": {
+                "registry": {
+                    "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/999999999",
+                    "source_class": "official_registry",
+                    "retrieved_at": "2026-08-24T06:00:00Z",
+                    "content_sha256": "0" * 64,
+                    "status": "not_available",
+                }
+            },
+        }
+
+        envelope = build_output_envelope(
+            profile=missing_profile,
+            run_id="run-missing-test",
+            started_at="2026-08-24T06:00:00Z",
+            completed_at="2026-08-24T06:00:01Z",
+        )
+
+        errors = validate_contract_envelope(envelope)
+        self.assertEqual(errors, [])
+        self.assertEqual(envelope["organisation_number"], "999999999")
+        self.assertEqual(envelope["run"]["terminal_status"], "completed")
+        self.assertEqual(len(envelope["claims"]), 6)
+        for claim in envelope["claims"]:
+            self.assertIn(claim["availability"], ["not_available", "not_applicable"])
+

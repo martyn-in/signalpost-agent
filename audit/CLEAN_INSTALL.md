@@ -52,9 +52,9 @@ From the activated environment, the evaluator runs:
 ```bash
 PYTHONPATH=src pytest -q
 ```
-*Expected Result:*
+*Empirical Result (Python 3.12.14 & Python 3.14.3):*
 ```
-129 passed, 5 subtests passed in ~2.5s (0 failures, 0 warnings)
+130 passed, 5 subtests passed in ~1.9–4.3s (0 failures, 0 warnings)
 ```
 
 ### B. Execute 100-Company Evaluation Batch
@@ -68,11 +68,27 @@ python3 scripts/run_competition_batch.py \
   --run-id eval-001 \
   --expected-count 100
 ```
-*Expected Result:*
-- Wall-clock time: ~5–12 seconds
+*Empirical Result:*
+- Wall-clock time: **2.25 seconds** (Python 3.12) / **4.59 seconds** (Python 3.14)
 - Emitted terminal envelopes: Exactly 100 (100% unique)
 - Outbound requests: 0 (local snapshot mode)
 - Third-party API cost: $0.00
+- Exit code: 0
+
+### B2. Execute Alternate 100-Company Batch (Arbitrary Input Verification)
+```bash
+python3 scripts/run_competition_batch.py \
+  --organisations data/input/benchmark-100-alt.jsonl \
+  --bulk data/input/signalpost-universe.jsonl.gz \
+  --profiles-output out/profiles-alt.jsonl \
+  --output out/envelopes-alt.jsonl \
+  --report out/run-report-alt.json \
+  --run-id eval-alt-001 \
+  --expected-count 100
+```
+*Empirical Result:*
+- Wall-clock time: **2.18 seconds** (Python 3.12)
+- Emitted terminal envelopes: Exactly 100 (100% unique, zero overlap with benchmark-100)
 - Exit code: 0
 
 ### C. Validate Submission Package

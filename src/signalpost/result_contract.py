@@ -78,14 +78,13 @@ def build_output_envelope(
 
     # Municipality / Location
     muni_val = profile.get("municipality") or reg_val.get("municipality")
-    if muni_val:
-        claim_items.append({
-            "field": "municipality",
-            "value": muni_val,
-            "availability": "available",
-            "confidence": 1.0,
-            "evidence_ids": [ev_id],
-        })
+    claim_items.append({
+        "field": "municipality",
+        "value": muni_val,
+        "availability": "available" if muni_val else "not_available",
+        "confidence": 1.0,
+        "evidence_ids": [ev_id] if muni_val else [],
+    })
 
     # 2. Financial Accounts
     fin_evidence = profile.get("evidence", {}).get("financials", {})
