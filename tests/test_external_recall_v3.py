@@ -7,7 +7,7 @@ from signalpost.extraction.jobs import extract_jobs_from_html, extract_jobs_from
 
 def test_domain_candidates_normalize_norwegian_name():
     urls = generate_domain_candidates("SANDNES ELEKTRISKE AS", "Sandnes")
-    assert "https://www.sandneselektriske.no" in urls
+    assert "https://sandneselektriske.no" in urls
 
 
 def test_domain_candidates_strip_city_suffix():
