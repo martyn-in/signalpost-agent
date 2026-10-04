@@ -225,12 +225,15 @@ def _fetch_secondary_page(url: str, *, homepage_domain: str, timeout: float, max
         page_soup = BeautifulSoup(page_html, "lxml")
         page_text = trafilatura.extract(page_html, url=final_url, include_links=False, include_tables=False, favor_precision=True) or ""
         from signalpost.extraction.jobs import extract_jobs_from_html
+        from signalpost.extraction.activity import extract_activity_from_html
         page_jobs = extract_jobs_from_html(page_html, base_url=final_url)
+        page_activity = extract_activity_from_html(page_html, base_url=final_url)
         page = {
             "url": final_url,
             "title": page_soup.title.get_text(" ", strip=True)[:500] if page_soup.title else "",
             "main_text_excerpt": page_text[:5000],
             "jobs": page_jobs,
+            "activities": page_activity,
             "content_sha256": __import__("hashlib").sha256(raw).hexdigest(),
         }
         return page, _social_links(final_url, page_soup), 2, len(raw), elapsed, None
@@ -294,9 +297,13 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
         description_tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
         description = str(description_tag.get("content") or "").strip() if description_tag else ""
         from signalpost.extraction.jobs import extract_jobs_from_html, extract_jobs_from_jsonld
+        from signalpost.extraction.activity import extract_activity_from_html, extract_activity_from_jsonld
         homepage_jobs = extract_jobs_from_html(html, base_url=final_url)
         jsonld_jobs = extract_jobs_from_jsonld(structured.get("json-ld", [])) if isinstance(structured, dict) else []
         all_jobs = list(homepage_jobs) + list(jsonld_jobs)
+        homepage_activity = extract_activity_from_html(html, base_url=final_url)
+        jsonld_activity = extract_activity_from_jsonld(structured.get("json-ld", []), base_url=final_url) if isinstance(structured, dict) else []
+        all_activity = list(homepage_activity) + list(jsonld_activity)
 
         value = {
             "requested_url": normalized,
@@ -310,7 +317,7 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
             "content_sha256": __import__("hashlib").sha256(raw).hexdigest(),
             "extraction_state": _extraction_state(text, soup),
         }
-        pages = [{"url": final_url, "title": title[:500], "main_text_excerpt": text[:5000], "jobs": homepage_jobs, "content_sha256": value["content_sha256"]}]
+        pages = [{"url": final_url, "title": title[:500], "main_text_excerpt": text[:5000], "jobs": homepage_jobs, "activities": homepage_activity, "content_sha256": value["content_sha256"]}]
         social = value["social_links"]
         crawl_errors = []
         requests = 2
@@ -333,10 +340,13 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
                 social.extend(page_social)
                 if page.get("jobs"):
                     all_jobs.extend(page.get("jobs"))
+                if page.get("activities"):
+                    all_activity.extend(page.get("activities"))
             elif page_error:
                 crawl_errors.append({"url": page_url, "error": page_error})
         value["pages"] = pages
-        value["jobs"] = all_jobs
+        value["jobs"] = list({(str(item.get("url") or ""), str(item.get("title") or "")): item for item in all_jobs}.values())[:30]
+        value["activities"] = list({(str(item.get("url") or ""), str(item.get("publication_date") or "")): item for item in all_activity}.values())[:30]
         value["social_links"] = list({(item["platform"], item["url"]): item for item in social}.values())
         value["crawl_errors"] = crawl_errors
         return evidence("website", "available", "registry_linked_company_website", final_url, value=value, note="Company-controlled claim layer; not an official registry fact", content_sha256=value["content_sha256"]), {"requests": requests, "bytes": bytes_received, "latencies_ms": page_latencies}
