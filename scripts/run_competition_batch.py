@@ -28,6 +28,8 @@ from norway_company_agent.evidence import utc_now  # noqa: E402
 from norway_company_agent.identity import apply_website_identity_gate  # noqa: E402
 from norway_company_agent.official import accounting_obligation_assessment, fetch_official_modules  # noqa: E402
 from norway_company_agent.website import fetch_website  # noqa: E402
+from signalpost.discovery.website_discovery import discover_and_verify_website  # noqa: E402
+from signalpost.sources.nav_jobs import fetch_nav_jobs  # noqa: E402
 from signalpost.result_contract import build_output_envelope, validate_contract_envelope  # noqa: E402
 
 
@@ -109,11 +111,11 @@ def main() -> None:
     if args.modules:
         requested_modules = [m.strip() for m in args.modules.split(",") if m.strip()]
     elif is_live:
-        requested_modules = ["registry", "accounting_obligation", "registry_live", "financials", "roles", "locations", "website"]
+        requested_modules = ["registry", "accounting_obligation", "registry_live", "financials", "roles", "locations", "website", "nav_jobs"]
     else:
         requested_modules = ["registry", "accounting_obligation"]
 
-    fetch_modules = set(requested_modules) - {"registry", "accounting_obligation", "website"}
+    fetch_modules = set(requested_modules) - {"registry", "accounting_obligation", "website", "nav_jobs"}
     # If live, always ensure registry_live is in fetch_modules so unseen companies get full metadata
     if is_live:
         fetch_modules.add("registry_live")
@@ -155,16 +157,38 @@ def main() -> None:
                 profile["evidence"]["accounting_obligation"] = accounting_obligation_assessment(profile)
 
         website_metrics = {"requests": 0, "bytes": 0, "latencies_ms": []}
+        nav_metrics = {"requests": 0, "bytes": 0, "latencies_ms": []}
         target_site = profile.get("website") or (records.get("registry_live", {}).get("value", {}).get("website"))
-        if "website" in requested_modules and target_site and operations["requests"] < max_requests_budget:
-            profile["website"] = target_site
-            website_record, website_metrics = fetch_website(target_site)
-            profile["evidence"]["website"] = apply_website_identity_gate(profile, website_record)["website"]
+        if "website" in requested_modules and operations["requests"] < max_requests_budget:
+            if target_site:
+                profile["website"] = target_site
+                website_record, website_metrics = fetch_website(target_site)
+                profile["evidence"]["website"] = apply_website_identity_gate(profile, website_record)["website"]
+            else:
+                # Spend discovery budget only on active operating entities. Guessed domains
+                # are never published unless the existing exact-company identity gate passes.
+                emp = profile.get("employees")
+                legal_form = str(profile.get("legal_form") or "").upper()
+                if is_live and (emp or 0) > 0 and legal_form not in {"BRL", "ESEK", "FLI", "ORGL", "SAM", "SF"}:
+                    discovered, website_metrics = discover_and_verify_website(
+                        profile, timeout=5.0, max_candidates_to_probe=2
+                    )
+                    if discovered:
+                        profile["evidence"]["website"] = discovered
+                        discovered_url = (discovered.get("value") or {}).get("final_url") or discovered.get("source_url")
+                        if discovered_url:
+                            profile["website"] = discovered_url
+
+        if "nav_jobs" in requested_modules and is_live and (profile.get("employees") or 0) > 0 and operations["requests"] < max_requests_budget:
+            nav_record, nav_metrics = fetch_nav_jobs(
+                profile["organisation_number"], profile.get("name"), timeout=5.0
+            )
+            profile["evidence"]["nav_jobs"] = nav_record
 
         metric = {
-            "requests": len(metrics) + website_metrics["requests"],
-            "bytes": sum(item.bytes_received for item in metrics) + website_metrics["bytes"],
-            "latencies_ms": [item.elapsed_ms for item in metrics] + website_metrics["latencies_ms"],
+            "requests": len(metrics) + website_metrics["requests"] + nav_metrics["requests"],
+            "bytes": sum(item.bytes_received for item in metrics) + website_metrics["bytes"] + nav_metrics["bytes"],
+            "latencies_ms": [item.elapsed_ms for item in metrics] + website_metrics["latencies_ms"] + nav_metrics["latencies_ms"],
         }
         profile["run_metrics"] = metric
         return profile, metric
