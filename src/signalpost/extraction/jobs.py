@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import urllib.parse
+from datetime import datetime, timezone
 from typing import Any
 from bs4 import BeautifulSoup
 
@@ -17,6 +19,10 @@ def extract_jobs_from_jsonld(json_data: list[dict[str, Any]]) -> list[dict[str, 
             node_type = str(node.get("@type") or "")
             if node_type == "JobPosting":
                 title = node.get("title")
+                valid_through = str(node.get("validThrough") or "").strip() or None
+                expiry = re.match(r"(20\\d{2}-\\d{2}-\\d{2})", valid_through or "")
+                if expiry and expiry.group(1) < datetime.now(timezone.utc).date().isoformat():
+                    title = None
                 if title:
                     loc = node.get("jobLocation")
                     address = loc.get("address", {}) if isinstance(loc, dict) else {}
@@ -28,7 +34,7 @@ def extract_jobs_from_jsonld(json_data: list[dict[str, Any]]) -> list[dict[str, 
                         "employment_type": str(node.get("employmentType") or "").strip() or None,
                         "url": str(node.get("url") or "").strip() or None,
                         "date_posted": str(node.get("datePosted") or "").strip() or None,
-                        "valid_through": str(node.get("validThrough") or "").strip() or None,
+                        "valid_through": valid_through,
                         "status": "active",
                     })
             for child in node.values():
@@ -38,7 +44,7 @@ def extract_jobs_from_jsonld(json_data: list[dict[str, Any]]) -> list[dict[str, 
                 _recurse(item)
 
     _recurse(json_data)
-    return jobs
+    return list({(str(j.get("url") or ""), str(j.get("title") or "")): j for j in jobs}.values())[:30]
 
 
 def extract_jobs_from_html(html_text: str, base_url: str = "") -> list[dict[str, Any]]:
@@ -82,4 +88,39 @@ def extract_jobs_from_html(html_text: str, base_url: str = "") -> list[dict[str,
             "status": "active",
         })
 
-    return jobs
+    # Many Norwegian career pages use ordinary links rather than job-card classes.
+    # Require vacancy-like URL/text signals and never treat the careers landing page itself as a vacancy.
+    landing_paths = {"/karriere", "/career", "/careers", "/jobb", "/jobber", "/jobs", "/ledige-stillinger", "/stillinger"}
+    vacancy_terms = re.compile(r"(ledig.?stilling|stilling|jobb|job|career|position|vacanc|soker|søker)", re.I)
+    ats_hosts = ("teamtailor.", "jobbnorge.", "webcruiter.", "reachmee.", "easycruit.", "workday.", "greenhouse.", "lever.", "smartrecruiters.")
+    seen_urls = {str(j.get("url") or "") for j in jobs}
+    for a in soup.select("a[href]")[:300]:
+        raw = str(a.get("href") or "").strip()
+        full = urllib.parse.urljoin(base_url, raw)
+        parsed = urllib.parse.urlparse(full)
+        path = parsed.path.rstrip("/").casefold() or "/"
+        text = a.get_text(" ", strip=True)
+        if path in landing_paths:
+            continue
+        signal = vacancy_terms.search(path + " " + text) or any(host in parsed.netloc.casefold() for host in ats_hosts)
+        if not signal or full in seen_urls:
+            continue
+        title = text.strip()
+        if len(title) < 4 or len(title) > 120:
+            slug = path.rsplit("/", 1)[-1].replace("-", " ").replace("_", " ").strip()
+            title = slug.title()
+        if len(title) < 4 or len(title) > 120:
+            continue
+        # Avoid navigation labels that are categories, not concrete vacancies.
+        if title.casefold() in {"jobb", "jobber", "jobs", "career", "careers", "karriere", "stillinger", "ledige stillinger"}:
+            continue
+        seen_urls.add(full)
+        jobs.append({
+            "title": title,
+            "location": None,
+            "url": full,
+            "fingerprint": hashlib.sha256(f"{title}:None:{full}".encode()).hexdigest(),
+            "status": "active",
+        })
+
+    return list({(str(j.get("url") or ""), str(j.get("title") or "")): j for j in jobs}.values())[:30]
