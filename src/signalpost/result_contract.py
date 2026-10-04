@@ -398,26 +398,44 @@ def build_output_envelope(
     # 6. Careers & Job Vacancies
     # =========================================================================
     jobs_list = []
+    job_evidence_ids = []
     if web_evidence.get("status") == "available" and publishable and isinstance(web_val, dict):
         if web_val.get("jobs"):
             jobs_list.extend(web_val.get("jobs"))
         for page in web_val.get("pages", []):
             if page.get("jobs"):
                 jobs_list.extend(page.get("jobs"))
-            p_url = page.get("url", "")
-            if any(k in p_url.casefold() for k in ("karriere", "career", "jobb", "stilling", "vacancy", "arbeid")):
-                text = page.get("main_text_excerpt", "")
-                if text:
-                    from signalpost.extraction.jobs import extract_jobs_from_html
-                    jobs_list.extend(extract_jobs_from_html(text, base_url=p_url))
+        if jobs_list and web_ev_id:
+            job_evidence_ids.append(web_ev_id)
 
-    if jobs_list and web_ev_id:
+    nav_jobs_ev = evidence_dict.get("nav_jobs", {})
+    nav_jobs_val = nav_jobs_ev.get("value") or {}
+    nav_jobs_list = nav_jobs_val.get("jobs") or [] if isinstance(nav_jobs_val, dict) else []
+    if nav_jobs_ev.get("status") == "available" and nav_jobs_list:
+        nav_jobs_ev_id = f"ev-{org_number}-{ev_counter}"
+        ev_counter += 1
+        evidence_items.append({
+            "id": nav_jobs_ev_id,
+            "source_url": nav_jobs_ev.get("source_url"),
+            "source_class": "official_nav_arbeidsplassen",
+            "retrieved_at": nav_jobs_ev.get("retrieved_at") or completed_at,
+            "content_sha256": nav_jobs_ev.get("content_sha256") or ("0" * 64),
+            "claim_span": f"Open NAV Arbeidsplassen vacancies matched to organisation {org_number}",
+        })
+        jobs_list.extend(nav_jobs_list)
+        job_evidence_ids.append(nav_jobs_ev_id)
+
+    if jobs_list and job_evidence_ids:
+        deduped_jobs = list({
+            (str(item.get("url") or ""), str(item.get("title") or "")): item
+            for item in jobs_list if isinstance(item, dict)
+        }.values())
         claim_items.append({
             "field": "jobs",
-            "value": jobs_list[:10],
+            "value": deduped_jobs[:10],
             "availability": "available",
-            "confidence": 0.9,
-            "evidence_ids": [web_ev_id],
+            "confidence": 0.95 if nav_jobs_list else 0.9,
+            "evidence_ids": job_evidence_ids,
         })
     else:
         is_holding = (emp_val in {0, None}) and any(h in str(profile.get("name", "")).upper() for h in ("HOLDING", "INVEST", "EIENDOM", "KAPITAL", "FINANS", "ASSET"))
@@ -435,10 +453,19 @@ def build_output_envelope(
         })
 
     # =========================================================================
-    # 7. Optional Verified External Signals (News & Reviews)
+    # 7. Optional Verified External Signals (Company Activity, News & Reviews)
     # =========================================================================
+    website_activity = web_val.get("activities") or [] if isinstance(web_val, dict) else []
     news_ev = evidence_dict.get("public_news")
-    if news_ev and news_ev.get("status") == "available" and (news_ev.get("value") or {}).get("articles"):
+    if website_activity and web_ev_id:
+        claim_items.append({
+            "field": "public_activity",
+            "value": website_activity[:10],
+            "availability": "available",
+            "confidence": 0.95,
+            "evidence_ids": [web_ev_id],
+        })
+    elif news_ev and news_ev.get("status") == "available" and (news_ev.get("value") or {}).get("articles"):
         news_ev_id = f"ev-{org_number}-{ev_counter}"
         ev_counter += 1
         evidence_items.append({
@@ -455,6 +482,14 @@ def build_output_envelope(
             "availability": "available",
             "confidence": 0.95,
             "evidence_ids": [news_ev_id],
+        })
+    else:
+        claim_items.append({
+            "field": "public_activity",
+            "value": None,
+            "availability": "not_available",
+            "confidence": 1.0,
+            "evidence_ids": [],
         })
 
     reviews_ev = evidence_dict.get("public_reviews")
