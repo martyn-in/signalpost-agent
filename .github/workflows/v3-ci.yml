@@ -18,3 +18,49 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: PYTHONPATH=src python -m pytest -q
       - run: PYTHONPATH=src python scripts/validate_builderr_contract.py
+      - name: Live 100-company production benchmark
+        run: |
+          PYTHONPATH=src python scripts/run_competition_batch.py \
+            --organisations data/input/benchmark-100-alt.jsonl \
+            --output out/v3-live100-envelopes.jsonl \
+            --profiles-output out/v3-live100-profiles.jsonl \
+            --report out/v3-live100-report.json \
+            --run-id v3-live100-ci \
+            --expected-count 100 \
+            --mode live
+      - name: Coverage report
+        run: |
+          PYTHONPATH=src python scripts/coverage_dashboard.py \
+            --envelopes out/v3-live100-envelopes.jsonl \
+            --output-csv out/v3-live100-coverage.csv \
+            | tee out/v3-live100-coverage.txt
+      - name: Serialized evidence audit
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[json.loads(x) for x in Path("out/v3-live100-envelopes.jsonl").read_text().splitlines() if x.strip()]
+          available=linked=broken=0
+          for row in rows:
+              evid={e.get("id") for e in row.get("evidence",[]) if e.get("id")}
+              for claim in row.get("claims",[]):
+                  if claim.get("availability")=="available":
+                      available+=1
+                      refs=claim.get("evidence_ids") or []
+                      if refs and all(r in evid for r in refs):
+                          linked+=1
+                      else:
+                          broken+=1
+          print(json.dumps({"envelopes":len(rows),"available_claims":available,"properly_linked":linked,"broken":broken}, indent=2))
+          assert len(rows)==100
+          assert broken==0
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v3-live100-results
+          path: |
+            out/v3-live100-envelopes.jsonl
+            out/v3-live100-profiles.jsonl
+            out/v3-live100-report.json
+            out/v3-live100-coverage.csv
+            out/v3-live100-coverage.txt
