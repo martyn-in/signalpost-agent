@@ -23,6 +23,16 @@ GENERIC_TAILS = {
     "technologies", "technology", "solutions", "consulting", "drift", "service",
     "tjenester", "utvikling",
 }
+COMPOUND_DOMAIN_ROOTS = {
+    "trevarefabrikk": "trevare",
+    "elektriske": "elektrisk",
+    "rørleggerforretning": "ror",
+    "rorleggerforretning": "ror",
+}
+GENERIC_EMAIL_HOSTS = {
+    "gmail.com", "hotmail.com", "outlook.com", "live.com", "icloud.com",
+    "yahoo.com", "online.no", "broadpark.no", "start.no",
+}
 CITY_TOKENS = {
     "oslo", "bergen", "trondheim", "stavanger", "kristiansand", "drammen",
     "sandnes", "fredrikstad", "tromso", "alesund", "kristiansund", "tonsberg",
@@ -60,6 +70,8 @@ def generate_domain_candidates(name: str, municipality: str | None = None) -> li
 
     add("".join(trimmed))
     if len(trimmed) >= 2:
+        rooted = [COMPOUND_DOMAIN_ROOTS.get(t, t) for t in trimmed]
+        add("".join(rooted))
         add("".join(trimmed[:2]))
         add("-".join(trimmed[:2]))
     if len(trimmed[0]) >= 4 and trimmed[0] not in GENERIC_TAILS:
@@ -69,10 +81,11 @@ def generate_domain_candidates(name: str, municipality: str | None = None) -> li
     urls: list[str] = []
     for base in bases:
         for tld in (".no", ".com"):
-            for prefix in ("https://www.", "https://"):
-                url = f"{prefix}{base}{tld}"
-                if url not in urls:
-                    urls.append(url)
+            # Probe one canonical origin per base. Correct sites normally redirect
+            # between bare/www themselves; duplicating both wastes the request budget.
+            url = f"https://{base}{tld}"
+            if url not in urls:
+                urls.append(url)
     return urls
 
 
@@ -85,9 +98,27 @@ def discover_and_verify_website(
     """Probe bounded domain candidates and return only an identity-verified website."""
     metrics = {"requests": 0, "bytes": 0, "latencies_ms": [], "candidates_probed": 0}
     existing = str(profile.get("website") or "").strip()
-    candidates = ([existing] if existing else []) + generate_domain_candidates(
+    candidates: list[str] = [existing] if existing else []
+
+    # Brreg contact fields are authoritative discovery hints. A corporate email
+    # domain or subunit homepage is much higher value than a guessed domain, but
+    # still has to pass the same exact-company website identity gate.
+    reg_live = ((profile.get("evidence") or {}).get("registry_live") or {}).get("value") or {}
+    locations = (((profile.get("evidence") or {}).get("locations") or {}).get("value") or {}).get("locations") or []
+    hint_rows = [reg_live] + [row for row in locations if isinstance(row, dict)]
+    for row in hint_rows:
+        site = str(row.get("website") or "").strip()
+        if site:
+            candidates.append(site)
+        email = str(row.get("email") or "").strip().casefold()
+        if "@" in email:
+            host = email.rsplit("@", 1)[-1].strip(".")
+            if host and host not in GENERIC_EMAIL_HOSTS and "." in host:
+                candidates.append(f"https://{host}")
+
+    candidates.extend(generate_domain_candidates(
         str(profile.get("name") or ""), str(profile.get("municipality") or "") or None
-    )
+    ))
     seen: set[str] = set()
     for candidate in candidates:
         if not candidate or candidate in seen:
