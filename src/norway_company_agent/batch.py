@@ -24,30 +24,54 @@ TERMINAL_STATES = {
 
 def read_organisation_inputs(path: str | Path) -> list[dict[str, Any]]:
     source = Path(path)
-    text = source.read_text(encoding="utf-8")
-    values: list[Any]
-    if source.suffix == ".json":
-        body = json.loads(text)
-        values = body if isinstance(body, list) else body.get("organisation_numbers", [])
-    elif source.suffix == ".jsonl":
-        values = [json.loads(line) for line in text.splitlines() if line.strip()]
-    else:
-        values = [line.strip() for line in text.splitlines() if line.strip()]
+    text = source.read_text(encoding="utf-8").strip()
+    values: list[Any] = []
+
+    # 1. Try parsing full text as JSON
+    if text.startswith("[") or text.startswith("{"):
+        try:
+            body = json.loads(text)
+            if isinstance(body, list):
+                values = body
+            elif isinstance(body, dict):
+                values = body.get("organisation_numbers") or body.get("organisations") or [body]
+        except Exception:
+            pass
+
+    # 2. Try parsing line by line as JSONL
+    if not values:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for line in lines:
+            if line.startswith("{"):
+                try:
+                    obj = json.loads(line)
+                    values.append(obj)
+                    continue
+                except Exception:
+                    pass
+            values.append(line)
+
     records = []
+    seen = set()
     for value in values:
-        org = value.get("organisation_number") if isinstance(value, dict) else value
-        org = "".join(character for character in str(org or "") if character.isdigit())
-        if len(org) != 9:
-            raise ValueError(f"Invalid Norwegian organisation number: {value!r}")
-        record = {"organisation_number": org}
+        org = None
+        if isinstance(value, dict):
+            org = value.get("organisation_number") or value.get("org_number") or value.get("orgnr")
+        else:
+            org = value
+        org_digits = "".join(character for character in str(org or "") if character.isdigit())
+        if len(org_digits) != 9:
+            continue
+        if org_digits in seen:
+            continue
+        seen.add(org_digits)
+        record = {"organisation_number": org_digits}
         if isinstance(value, dict):
             for key in ("evaluation_split", "sample_slice"):
                 if value.get(key) is not None:
                     record[key] = value[key]
         records.append(record)
-    orgs = [record["organisation_number"] for record in records]
-    if len(orgs) != len(set(orgs)):
-        raise ValueError("Organisation-number input contains duplicates")
+
     return records
 
 
@@ -55,35 +79,39 @@ def read_organisation_numbers(path: str | Path) -> list[str]:
     return [record["organisation_number"] for record in read_organisation_inputs(path)]
 
 
-def profiles_from_bulk(path: str | Path, organisation_numbers: Iterable[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def profiles_from_bulk(path: str | Path | None, organisation_numbers: Iterable[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     requested = list(organisation_numbers)
     wanted = set(requested)
-    snapshot_sha256 = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    snapshot_sha256 = "0" * 64
     retrieved_at = utc_now()
     found: dict[str, dict[str, Any]] = {}
     scanned = 0
-    for profile in iter_bulk(path):
-        scanned += 1
-        org = profile["organisation_number"]
-        if org not in wanted:
-            continue
-        raw = profile.pop("raw", {})
-        profile["evidence"] = {
-            "registry": evidence(
-                "registry",
-                "available",
-                "official_registry_bulk",
-                "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv",
-                value=raw,
-                retrieved_at=retrieved_at,
-                content_sha256=snapshot_sha256,
-                source_row_key=org,
-            ),
-            "accounting_obligation": accounting_obligation_assessment(profile),
-        }
-        found[org] = profile
-        if len(found) == len(wanted):
-            break
+
+    if path and Path(path).exists():
+        snapshot_sha256 = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        for profile in iter_bulk(path):
+            scanned += 1
+            org = profile["organisation_number"]
+            if org not in wanted:
+                continue
+            raw = profile.pop("raw", {})
+            profile["evidence"] = {
+                "registry": evidence(
+                    "registry",
+                    "available",
+                    "official_registry_bulk",
+                    "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv",
+                    value=raw,
+                    retrieved_at=retrieved_at,
+                    content_sha256=snapshot_sha256,
+                    source_row_key=org,
+                ),
+                "accounting_obligation": accounting_obligation_assessment(profile),
+            }
+            found[org] = profile
+            if len(found) == len(wanted):
+                break
+
     missing = [org for org in requested if org not in found]
     for org in missing:
         found[org] = {

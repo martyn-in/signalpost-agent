@@ -1,31 +1,37 @@
 {
-  "run_id": "eval-py312-001",
-  "started_at": "2026-09-23T17:15:27.987958Z",
-  "completed_at": "2026-09-23T17:15:30.238500Z",
-  "expected_count": 100,
+  "run_id": "signalpost-1791116368",
+  "started_at": "2026-10-04T12:19:28.638017Z",
+  "completed_at": "2026-10-04T12:20:02.526735Z",
+  "mode": "live",
+  "input_count": 100,
   "emitted_envelopes": 100,
   "resumed_profiles": 0,
   "profiles_fetched_this_run": 100,
   "modules": [
     "registry",
-    "accounting_obligation"
+    "accounting_obligation",
+    "registry_live",
+    "financials",
+    "roles",
+    "locations",
+    "website"
   ],
   "registry": {
-    "registry_snapshot_sha256": "1c89710e5b01f8617e86d09fbdff4a52f2f8dbbba297e74f7164b5984f5a0384",
-    "registry_rows_scanned": 409260,
+    "registry_snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "registry_rows_scanned": 0,
     "requested": 100,
     "selected": 100
   },
   "operations": {
-    "requests": 0,
-    "bytes": 0,
-    "p50_ms": null,
-    "p95_ms": null
+    "requests": 438,
+    "bytes": 2792426,
+    "p50_ms": 818,
+    "p95_ms": 1151
   },
   "validation": {
     "passed": true,
     "checks": {
-      "exact_expected_count": true,
+      "exact_output_count": true,
       "unique_organisation_numbers": true,
       "zero_contract_violations": true
     },

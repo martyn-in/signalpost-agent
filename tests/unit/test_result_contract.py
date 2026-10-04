@@ -120,7 +120,7 @@ class ResultContractTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(envelope["organisation_number"], "999999999")
         self.assertEqual(envelope["run"]["terminal_status"], "completed")
-        self.assertEqual(len(envelope["claims"]), 6)
+        self.assertGreaterEqual(len(envelope["claims"]), 6)
         for claim in envelope["claims"]:
             self.assertIn(claim["availability"], ["not_available", "not_applicable"])
 

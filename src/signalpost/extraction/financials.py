@@ -17,7 +17,7 @@ def parse_norwegian_number(raw: str | int | float | None, scale_multiplier: floa
         return float(raw) * scale_multiplier
 
     cleaned = str(raw).strip()
-    if not cleaned or cleaned in {"-", "–", "—", "N/A", "n/a", "null"}:
+    if not cleaned or cleaned in {"-", "–", "—", "−", "N/A", "n/a", "null", "None", "ingen", "ikke oppgitt"}:
         return None
 
     # Handle negative numbers wrapped in parentheses, e.g. (1 250) -> -1250
@@ -25,15 +25,15 @@ def parse_norwegian_number(raw: str | int | float | None, scale_multiplier: floa
     if cleaned.startswith("(") and cleaned.endswith(")"):
         is_negative = True
         cleaned = cleaned[1:-1].strip()
-    elif cleaned.startswith("-") or cleaned.startswith("−"):
+    elif cleaned.startswith(("-", "–", "—", "−")):
         is_negative = True
         cleaned = cleaned[1:].strip()
-    elif cleaned.endswith("-"):
+    elif cleaned.endswith(("-", "–", "—", "−")):
         is_negative = True
         cleaned = cleaned[:-1].strip()
 
-    # Remove non-breaking spaces and regular spaces used as thousands separators
-    cleaned = cleaned.replace("\u00a0", "").replace(" ", "")
+    # Remove non-breaking spaces, narrow no-break spaces, and regular spaces used as thousands separators
+    cleaned = cleaned.replace("\u00a0", "").replace("\u202f", "").replace(" ", "")
 
     # Replace Norwegian decimal comma with period
     if "," in cleaned and "." not in cleaned:
@@ -55,10 +55,12 @@ def parse_norwegian_number(raw: str | int | float | None, scale_multiplier: floa
 def detect_scale_factor(text: str) -> float:
     """Detect scale factor in Norwegian financial notes or table headers."""
     lowered = text.casefold()
-    if any(m in lowered for m in ["i hele tusen", "i 1 000", "i 1000", "tusen nok", "nok 1000", "nok 1 000", "tkr", "t.kr"]):
-        return 1_000.0
-    if any(m in lowered for m in ["i millioner", "i mill", "mnok", "mill. nok"]):
+    if any(m in lowered for m in ["milliarder", "mrd", "bnok"]):
+        return 1_000_000_000.0
+    if any(m in lowered for m in ["millioner", "mill.", "mill nok", "mnok", "m nok"]):
         return 1_000_000.0
+    if any(m in lowered for m in ["tusen", "tkr", "t.kr", "knok"]) or bool(re.search(r"\b1\s*000\b", lowered)):
+        return 1_000.0
     return 1.0
 
 

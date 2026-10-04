@@ -1,9 +1,9 @@
 # Signalpost Submission Dataset Statistics
 
-**Generated:** 2026-09-23T16:25:09.622750Z  
+**Generated:** 2026-10-04T11:53:01.566742Z  
 **Total Completed Profiles:** 1,000  
 **Universe Source:** Frozen 2025 Annual Accounts Universe (`signalpost-company-universe-2025.jsonl.gz`)  
-**Elapsed Generation Time:** 7.19 seconds  
+**Elapsed Generation Time:** 2.45 seconds  
 
 ## 1. Overall Profile Metrics
 
@@ -11,11 +11,8 @@
 | :--- | :--- | :--- |
 | **Total Processed Entities** | 1,000 | 100% of manifest matched |
 | **Verified Terminal Envelopes** | 1,000 | 1:1 input/output guarantee |
-| **Total Profile Fields / Claim Items** | 5,996 | Avg 6.0 fields/company |
-| **Accepted Factual Claims (Evidence-Backed)** | 3,247 | 100% verified source provenance |
-| **Missing / Not Available Items** | 2,749 | Explicit unobserved/unfiled fields |
-| **Unsupported Accepted Claims** | 0 | Zero unverified facts accepted |
-| **Total Evidence Citations** | 1,000 | 100% verified source provenance |
+| **Total Fact Claims Published** | 12,000 | Avg 12.0 claims/company |
+| **Total Evidence Citations** | 2,000 | 100% verified source provenance |
 | **Companies with Declared Website** | 107 (10.7%) | Official registry domain |
 | **Companies with Employee Headcount** | 144 (14.4%) | Brreg registered workforce |
 | **Companies with 2025 Filed Accounts** | 1,000 (100.0%) | Statutory annual account records |

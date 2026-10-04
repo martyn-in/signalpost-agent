@@ -24,6 +24,25 @@ PARKED_MARKERS = (
     "buy this domain",
 )
 
+AGGREGATOR_AND_PORTAL_MARKERS = (
+    "proff.no",
+    "purehelp.no",
+    "gulesider",
+    "gule sider",
+    "1881.no",
+    "finn.no",
+    "linkedin",
+    "facebook.com",
+    "arbeidsplassen",
+    "dn.no",
+    "e24",
+    "finansavisen",
+    "konkursbo",
+    "bostyret",
+    "olportalen",
+    "pubmed",
+)
+
 
 def extract_tokens(text: Any) -> list[str]:
     """Normalize text and extract non-generic word tokens."""
@@ -47,7 +66,7 @@ def assess_website_identity(
 ) -> dict[str, Any]:
     """Evaluate whether candidate web page belongs to target Norwegian entity.
     
-    Implements hard rejection for conflicting organisation numbers and parked domains.
+    Implements hard rejection for conflicting organisation numbers, aggregators, and parked domains.
     """
     target_tokens = extract_tokens(company_name)
     target_org_digits = re.sub(r"\D", "", str(target_org_number or ""))
@@ -76,7 +95,18 @@ def assess_website_identity(
             "matched_tokens": [],
         }
 
-    # 2. Conflicting Organisation Number Check (HARD REJECTION)
+    # 2. Aggregator, Directory, Job Board, News Portal, or Insolvency Notice Hard Check
+    # (These third-party platforms are never the company's official corporate website)
+    if any(marker in normalized_candidate for marker in AGGREGATOR_AND_PORTAL_MARKERS):
+        return {
+            "status": "rejected",
+            "score": 0.2,
+            "publishable": False,
+            "reasons": ["Aggregator, directory, job portal, news article, or insolvency portal detected instead of official website"],
+            "matched_tokens": [],
+        }
+
+    # 3. Conflicting Organisation Number Check (HARD REJECTION)
     candidate_org_numbers = extract_norwegian_org_numbers(candidate_full_text)
     if candidate_org_numbers and target_org_digits:
         if target_org_digits not in candidate_org_numbers and any(
@@ -92,7 +122,7 @@ def assess_website_identity(
                 "matched_tokens": [],
             }
 
-    # 3. Exact Organisation Number Match (GOLD STANDARD)
+    # 4. Exact Organisation Number Match (GOLD STANDARD)
     compact_candidate = re.sub(r"\D", "", candidate_full_text)
     if target_org_digits and target_org_digits in compact_candidate:
         return {
@@ -103,7 +133,7 @@ def assess_website_identity(
             "matched_tokens": target_tokens,
         }
 
-    # 4. Token Overlap & Distinctive Legal Name Match
+    # 5. Token Overlap & Distinctive Legal Name Match
     candidate_tokens = set(extract_tokens(candidate_full_text))
     overlap = sorted(set(target_tokens) & candidate_tokens)
     ratio = len(overlap) / len(set(target_tokens)) if target_tokens else 0.0
@@ -114,10 +144,14 @@ def assess_website_identity(
     substantive_content = len(text_sample.strip()) >= 80
 
     # Foreign Namesake & Jurisdiction Check (Zero Tolerance for Foreign Entities)
-    foreign_markers = {"ltd", "limited", "gmbh", "llc", "inc", "corp", "corporation", "sarl", "bv", "oy", "plc", "pty"}
+    foreign_markers = {
+        "ltd", "limited", "gmbh", "llc", "inc", "corp", "corporation",
+        "sarl", "bv", "oy", "plc", "pty", "ab", "aps", "aktiebolag", "sverige", "danmark", "cvr",
+    }
     foreign_jurisdictions = (
         "registered in england", "companies house", "registered in delaware",
-        "handelsregister", "chambre de commerce", "uk based",
+        "handelsregister", "chambre de commerce", "uk based", "svenskt aktiebolag",
+        "cvr-nr", "cvr nr",
     )
     raw_tokens_lower = set(re.findall(r"[a-z0-9]+", normalized_candidate))
     has_foreign_marker = bool(raw_tokens_lower & foreign_markers) or any(

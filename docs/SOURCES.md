@@ -33,3 +33,17 @@ Signalpost strictly follows the Builderr Permitted Sources Policy (`starter-brie
 - Domain concurrency is capped to 2 concurrent connections per host.
 - Polite request delays (minimum 500ms between requests to the same domain) prevent unintentional server overload.
 - Brønnøysund history copies enforce a deterministic 2.1-second token bucket delay to comply with the 30 requests/minute API ceiling.
+
+---
+
+## 3. Network Security & SSRF Protection Policy
+
+Signalpost enforces strict network perimeter boundaries (`signalpost.security.network`):
+- **Rejected Schemes**: Only `http://` and `https://` schemes are permitted. Schemes like `file://`, `ftp://`, `gopher://`, `data:`, `javascript:` are unconditionally rejected.
+- **Rejected Hostnames & IPs**:
+  - `localhost`, `127.0.0.1`, `[::1]`
+  - RFC 1918 Private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+  - Cloud provider metadata IP endpoints (`169.254.169.254`, `metadata.google.internal`)
+  - Internal TLDs (`.local`, `.internal`, `.lan`)
+- **Embedded Credentials**: URLs containing userinfo (e.g., `user:pass@host`) are rejected.
+- **Secrets Management**: No private API keys or competitor tokens are stored in the repository. All operations utilize lawful public Norwegian data feeds.

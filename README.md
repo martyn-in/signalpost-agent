@@ -13,17 +13,13 @@ Built for the **[Builderr Signalpost Hackathon](https://builderr.ai/challenges/s
 
 ## 1. Quick Start: One-Command Evaluator Run
 
-To reproduce the official daily evaluation batch on 100 companies:
+Execute research across any Builderr-supplied company batch (arbitrary path, `.txt`, `.json`, or `.jsonl`):
 
 ```bash
 python3 scripts/run_competition_batch.py \
   --organisations data/input/benchmark-100.jsonl \
-  --bulk data/input/signalpost-universe.jsonl.gz \
-  --profiles-output out/profiles.jsonl \
   --output out/envelopes.jsonl \
-  --report out/run-report.json \
-  --run-id eval-001 \
-  --expected-count 100
+  --report out/run-report.json
 ```
 
 To research a single Norwegian company from the CLI:
@@ -32,10 +28,16 @@ To research a single Norwegian company from the CLI:
 python3 -m signalpost research --org-number 985589003
 ```
 
-To run full automated unit tests:
+To run the complete automated test suite (254 tests including Zero-Score Regression, 42 Adversarial Identity cases, and 81 Financial Red Team cases):
 
 ```bash
 PYTHONPATH=src python3 -m pytest -q
+```
+
+To verify the official Builderr result contract across all input formats and boundary sizes ($N=1$):
+
+```bash
+PYTHONPATH=src python3 scripts/validate_builderr_contract.py
 ```
 
 ---

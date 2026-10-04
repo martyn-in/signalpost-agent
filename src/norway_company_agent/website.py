@@ -31,6 +31,7 @@ SOCIAL_HOSTS = {
     "tiktok.com": "tiktok",
 }
 PRIORITY_TERMS = (
+    "karriere", "career", "jobb", "stilling", "stillinger", "jobs", "vacancies", "arbeid",
     "om-oss", "om_oss", "about", "kontakt", "contact", "ledelse", "management",
     "team", "people", "locations", "lokasjoner", "avdelinger", "butikker",
     "news", "press", "aktuelt", "nyheter",
@@ -223,10 +224,13 @@ def _fetch_secondary_page(url: str, *, homepage_domain: str, timeout: float, max
         page_html = raw.decode("utf-8", errors="replace")
         page_soup = BeautifulSoup(page_html, "lxml")
         page_text = trafilatura.extract(page_html, url=final_url, include_links=False, include_tables=False, favor_precision=True) or ""
+        from signalpost.extraction.jobs import extract_jobs_from_html
+        page_jobs = extract_jobs_from_html(page_html, base_url=final_url)
         page = {
             "url": final_url,
             "title": page_soup.title.get_text(" ", strip=True)[:500] if page_soup.title else "",
             "main_text_excerpt": page_text[:5000],
+            "jobs": page_jobs,
             "content_sha256": __import__("hashlib").sha256(raw).hexdigest(),
         }
         return page, _social_links(final_url, page_soup), 2, len(raw), elapsed, None
@@ -289,6 +293,11 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
         title = soup.title.get_text(" ", strip=True) if soup.title else ""
         description_tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
         description = str(description_tag.get("content") or "").strip() if description_tag else ""
+        from signalpost.extraction.jobs import extract_jobs_from_html, extract_jobs_from_jsonld
+        homepage_jobs = extract_jobs_from_html(html, base_url=final_url)
+        jsonld_jobs = extract_jobs_from_jsonld(structured.get("json-ld", [])) if isinstance(structured, dict) else []
+        all_jobs = list(homepage_jobs) + list(jsonld_jobs)
+
         value = {
             "requested_url": normalized,
             "final_url": final_url,
@@ -301,7 +310,7 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
             "content_sha256": __import__("hashlib").sha256(raw).hexdigest(),
             "extraction_state": _extraction_state(text, soup),
         }
-        pages = [{"url": final_url, "title": title[:500], "main_text_excerpt": text[:5000], "content_sha256": value["content_sha256"]}]
+        pages = [{"url": final_url, "title": title[:500], "main_text_excerpt": text[:5000], "jobs": homepage_jobs, "content_sha256": value["content_sha256"]}]
         social = value["social_links"]
         crawl_errors = []
         requests = 2
@@ -322,9 +331,12 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
             if page:
                 pages.append(page)
                 social.extend(page_social)
+                if page.get("jobs"):
+                    all_jobs.extend(page.get("jobs"))
             elif page_error:
                 crawl_errors.append({"url": page_url, "error": page_error})
         value["pages"] = pages
+        value["jobs"] = all_jobs
         value["social_links"] = list({(item["platform"], item["url"]): item for item in social}.values())
         value["crawl_errors"] = crawl_errors
         return evidence("website", "available", "registry_linked_company_website", final_url, value=value, note="Company-controlled claim layer; not an official registry fact", content_sha256=value["content_sha256"]), {"requests": requests, "bytes": bytes_received, "latencies_ms": page_latencies}
