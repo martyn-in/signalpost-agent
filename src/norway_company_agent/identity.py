@@ -69,6 +69,20 @@ def assess_website_identity(profile: dict[str, Any]) -> dict[str, Any]:
     homepage_token_sets = [set(_tokens(part)) for part in homepage_identity_parts if part]
     exact_homepage_name = bool(core and any(set(core).issubset(tokens) for tokens in homepage_token_sets))
     substantive_homepage = len(str(value.get("main_text_excerpt") or "").strip()) >= 100
+    requested = str(value.get("requested_url") or website.get("source_url") or "")
+    registered_profile_site = str(profile.get("website") or "")
+    try:
+        requested_domain = urllib.parse.urlparse(requested if "://" in requested else "https://" + requested).hostname or ""
+        profile_domain = urllib.parse.urlparse(registered_profile_site if "://" in registered_profile_site else "https://" + registered_profile_site).hostname or ""
+    except ValueError:
+        requested_domain = ""
+        profile_domain = ""
+    requested_domain = requested_domain.casefold().removeprefix("www.")
+    profile_domain = profile_domain.casefold().removeprefix("www.")
+    registry_linked = bool(profile_domain and requested_domain and (requested_domain == profile_domain or requested_domain.endswith("." + profile_domain) or profile_domain.endswith("." + requested_domain)))
+    host_compact = "".join(_tokens(requested_domain))
+    core_compact = "".join(core)
+    exact_brand_domain = bool(core_compact and len(core_compact) >= 4 and core_compact in host_compact)
     is_business_sports_club = bool(re.search(r"(?:^|\s)B\.?\s*I\.?\s*L\.?(?:\s|$)", str(profile.get("name") or ""), re.I))
     if any(marker in normalized_raw for marker in parked_markers):
         score = 0.1
@@ -79,12 +93,18 @@ def assess_website_identity(profile: dict[str, Any]) -> dict[str, Any]:
     elif org_digits and org_digits in compact_homepage_candidate:
         score = 1.0
         reasons.append("exact organisation number appears in homepage identity evidence")
+    elif registry_linked and exact_brand_domain:
+        score = 0.98
+        reasons.append("authoritative registry-linked site uses the normalized legal brand in its domain")
     elif len(core) >= 2 and exact_homepage_name:
         score = 0.95
         reasons.append("all normalized legal-name tokens appear together in homepage identity evidence")
-    elif len(core) == 1 and exact_homepage_name and substantive_homepage:
+    elif len(core) == 1 and exact_homepage_name and (substantive_homepage or registry_linked):
         score = 0.95
-        reasons.append("single distinctive legal-name token appears in homepage identity evidence with substantive content")
+        reasons.append("single distinctive legal-name token appears in registry/domain identity evidence")
+    elif registry_linked and ratio >= 0.75 and len(overlap) >= 2:
+        score = 0.92
+        reasons.append("authoritative registry-linked site corroborates most legal-name tokens")
     elif ratio >= 0.75 and len(overlap) >= 2:
         score = 0.85
         reasons.append("most legal-name tokens appear, but exact identity is incomplete")
