@@ -20,7 +20,7 @@ def extract_jobs_from_jsonld(json_data: list[dict[str, Any]]) -> list[dict[str, 
             if node_type == "JobPosting":
                 title = node.get("title")
                 valid_through = str(node.get("validThrough") or "").strip() or None
-                expiry = re.match(r"(20\\d{2}-\\d{2}-\\d{2})", valid_through or "")
+                expiry = re.match(r"(20\d{2}-\d{2}-\d{2})", valid_through or "")
                 if expiry and expiry.group(1) < datetime.now(timezone.utc).date().isoformat():
                     title = None
                 if title:
@@ -71,7 +71,6 @@ def extract_jobs_from_html(html_text: str, base_url: str = "") -> list[dict[str,
         link_el = el if el.name == "a" else el.find("a")
         href = link_el.get("href") if link_el else None
         if href and base_url:
-            import urllib.parse
             href = urllib.parse.urljoin(base_url, href)
 
         text = el.get_text(" ", strip=True)
