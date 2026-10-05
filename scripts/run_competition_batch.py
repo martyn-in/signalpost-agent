@@ -123,6 +123,26 @@ def main() -> None:
     operations = {"requests": 0, "bytes": 0, "latencies_ms": []}
     max_requests_budget = 1900
 
+    def active_operating_candidate(profile: dict) -> bool:
+        """Prioritize likely operating entities without relying on employee count alone."""
+        reg = ((profile.get("evidence") or {}).get("registry_live") or {}).get("value") or {}
+        if reg.get("bankrupt") is True or reg.get("liquidating") is True:
+            return False
+        legal_form = str(profile.get("legal_form") or reg.get("legal_form") or "").upper()
+        if legal_form in {"BRL", "ESEK", "FLI", "ORGL", "SAM", "SF"}:
+            return False
+        employees = profile.get("employees")
+        if (employees or 0) > 0:
+            return True
+        name = str(profile.get("name") or reg.get("name") or "").casefold()
+        industry = str((reg.get("industry") or {}).get("kode") or "")
+        passive_name = any(token in name for token in (" holding", " eiendom", " investment", " invest "))
+        passive_industry = industry.startswith(("64.2", "68."))
+        if passive_name or passive_industry:
+            return False
+        has_contact = any(reg.get(key) for key in ("website", "email", "phone", "mobile"))
+        return bool(has_contact or industry)
+
     def enrich(profile: dict) -> tuple[dict, dict]:
         if operations["requests"] >= max_requests_budget:
             # Budget protection: fallback to offline snapshot data
@@ -165,11 +185,9 @@ def main() -> None:
                 website_record, website_metrics = fetch_website(target_site)
                 profile["evidence"]["website"] = apply_website_identity_gate(profile, website_record)["website"]
             else:
-                # Spend discovery budget only on active operating entities. Guessed domains
-                # are never published unless the existing exact-company identity gate passes.
-                emp = profile.get("employees")
-                legal_form = str(profile.get("legal_form") or "").upper()
-                if is_live and (emp or 0) > 0 and legal_form not in {"BRL", "ESEK", "FLI", "ORGL", "SAM", "SF"}:
+                # Brreg employee counts are sparse. Probe all likely operating entities,
+                # but keep the candidate set bounded and retain the strict identity gate.
+                if is_live and active_operating_candidate(profile):
                     discovered, website_metrics = discover_and_verify_website(
                         profile, timeout=5.0, max_candidates_to_probe=2
                     )
@@ -179,7 +197,7 @@ def main() -> None:
                         if discovered_url:
                             profile["website"] = discovered_url
 
-        if "nav_jobs" in requested_modules and is_live and (profile.get("employees") or 0) > 0 and operations["requests"] < max_requests_budget:
+        if "nav_jobs" in requested_modules and is_live and active_operating_candidate(profile) and operations["requests"] < max_requests_budget:
             nav_record, nav_metrics = fetch_nav_jobs(
                 profile["organisation_number"], profile.get("name"), timeout=5.0
             )
