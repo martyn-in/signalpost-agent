@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from signalpost.discovery.website_discovery import generate_domain_candidates
+from signalpost.discovery.website_discovery import _authoritative_site_candidates, generate_domain_candidates
 from signalpost.extraction.activity import extract_activity_from_html, extract_activity_from_jsonld
 from signalpost.extraction.jobs import extract_jobs_from_html, extract_jobs_from_jsonld
 
@@ -13,6 +13,14 @@ def test_domain_candidates_normalize_norwegian_name():
 def test_domain_candidates_strip_city_suffix():
     urls = generate_domain_candidates("HØYER TRONDHEIM AS", "Trondheim")
     assert any("hoyer.no" in u for u in urls)
+
+
+def test_authoritative_contact_domain_tries_bare_then_www():
+    urls = _authoritative_site_candidates("sandneselektriske.no")
+    assert urls[:2] == [
+        "https://sandneselektriske.no/",
+        "https://www.sandneselektriske.no/",
+    ]
 
 
 def test_activity_html_requires_date_and_link():
