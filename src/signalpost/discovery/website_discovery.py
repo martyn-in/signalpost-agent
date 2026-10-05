@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+import urllib.parse
 from typing import Any
 
 from norway_company_agent.identity import apply_website_identity_gate
@@ -45,6 +46,29 @@ def _ascii_tokens(value: str | None) -> list[str]:
     text = str(value or "").casefold().translate(str.maketrans({"æ": "ae", "ø": "o", "å": "a"}))
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     return [t for t in re.findall(r"[a-z0-9]+", text) if t and t not in LEGAL_SUFFIXES]
+
+
+def _authoritative_site_candidates(value: str) -> list[str]:
+    """Return bare + www variants for a registry/contact-derived domain hint."""
+    raw = str(value or "").strip()
+    if not raw:
+        return []
+    normalized = raw if re.match(r"^https?://", raw, re.I) else "https://" + raw
+    try:
+        parsed = urllib.parse.urlparse(normalized)
+    except ValueError:
+        return [raw]
+    host = (parsed.hostname or "").strip(".")
+    if not host:
+        return [raw]
+    scheme = parsed.scheme or "https"
+    port = f":{parsed.port}" if parsed.port else ""
+    path = parsed.path or "/"
+    query = parsed.query
+    out = [urllib.parse.urlunparse((scheme, host + port, path, "", query, ""))]
+    if not host.casefold().startswith("www."):
+        out.append(urllib.parse.urlunparse((scheme, "www." + host + port, path, "", query, "")))
+    return out
 
 
 def generate_domain_candidates(name: str, municipality: str | None = None) -> list[str]:
@@ -109,12 +133,12 @@ def discover_and_verify_website(
     for row in hint_rows:
         site = str(row.get("website") or "").strip()
         if site:
-            candidates.append(site)
+            candidates.extend(_authoritative_site_candidates(site))
         email = str(row.get("email") or "").strip().casefold()
         if "@" in email:
             host = email.rsplit("@", 1)[-1].strip(".")
             if host and host not in GENERIC_EMAIL_HOSTS and "." in host:
-                candidates.append(f"https://{host}")
+                candidates.extend(_authoritative_site_candidates(host))
 
     candidates.extend(generate_domain_candidates(
         str(profile.get("name") or ""), str(profile.get("municipality") or "") or None
