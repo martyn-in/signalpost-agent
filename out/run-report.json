@@ -1,7 +1,7 @@
 {
-  "run_id": "signalpost-1791116368",
-  "started_at": "2026-10-04T12:19:28.638017Z",
-  "completed_at": "2026-10-04T12:20:02.526735Z",
+  "run_id": "eval-001",
+  "started_at": "2026-10-06T17:13:03.307276Z",
+  "completed_at": "2026-10-06T17:15:29.778218Z",
   "mode": "live",
   "input_count": 100,
   "emitted_envelopes": 100,
@@ -14,19 +14,28 @@
     "financials",
     "roles",
     "locations",
-    "website"
+    "website",
+    "nav_jobs"
   ],
   "registry": {
-    "registry_snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-    "registry_rows_scanned": 0,
+    "registry_snapshot_sha256": "1c89710e5b01f8617e86d09fbdff4a52f2f8dbbba297e74f7164b5984f5a0384",
+    "registry_rows_scanned": 409260,
     "requested": 100,
     "selected": 100
   },
   "operations": {
-    "requests": 438,
-    "bytes": 2792426,
-    "p50_ms": 818,
-    "p95_ms": 1151
+    "requests_made": 215,
+    "redirects_followed": 0,
+    "retries_attempted": 0,
+    "total_outbound_requests": 215,
+    "cache_hits": 0,
+    "bytes_downloaded": 2812595,
+    "cost_spent_usd": 0.0,
+    "remaining_budget": 1685,
+    "soft_limit_reached": false,
+    "hard_limit_reached": false,
+    "p95_latency_ms": 2041,
+    "requests": 215
   },
   "validation": {
     "passed": true,

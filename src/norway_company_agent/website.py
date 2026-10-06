@@ -190,6 +190,18 @@ def normalize_social_url(url: str) -> dict[str, str] | None:
 def _priority_links(base_url: str, soup: BeautifulSoup, limit: int = 4) -> list[str]:
     base = urllib.parse.urlparse(base_url)
     candidates: dict[str, int] = {}
+    categorized: dict[str, list[tuple[int, str]]] = {
+        "careers": [],
+        "news": [],
+        "about": [],
+        "contact": [],
+    }
+
+    CAREERS_KEYWORDS = {"karriere", "career", "jobb", "stilling", "stillinger", "jobs", "vacancies", "arbeid"}
+    NEWS_KEYWORDS = {"news", "press", "aktuelt", "nyheter", "blogg", "artikler", "pressemeldinger"}
+    ABOUT_KEYWORDS = {"om-oss", "om_oss", "about", "ledelse", "management", "team", "people"}
+    CONTACT_KEYWORDS = {"kontakt", "contact", "locations", "lokasjoner", "avdelinger", "butikker"}
+
     for anchor in soup.select("a[href]"):
         href = str(anchor.get("href") or "").strip()
         url = urllib.parse.urljoin(base_url, href)
@@ -197,14 +209,43 @@ def _priority_links(base_url: str, soup: BeautifulSoup, limit: int = 4) -> list[
         if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() != base.netloc.lower():
             continue
         haystack = (parsed.path + " " + anchor.get_text(" ", strip=True)).casefold()
-        rank = next((index for index, term in enumerate(PRIORITY_TERMS) if term in haystack), None)
-        if rank is None:
-            continue
         clean = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", "", "", ""))
         if clean.rstrip("/") == base_url.rstrip("/"):
             continue
+
+        rank = next((index for index, term in enumerate(PRIORITY_TERMS) if term in haystack), None)
+        if rank is None:
+            continue
+
+        if any(k in haystack for k in CAREERS_KEYWORDS):
+            categorized["careers"].append((rank, clean))
+        elif any(k in haystack for k in NEWS_KEYWORDS):
+            categorized["news"].append((rank, clean))
+        elif any(k in haystack for k in ABOUT_KEYWORDS):
+            categorized["about"].append((rank, clean))
+        elif any(k in haystack for k in CONTACT_KEYWORDS):
+            categorized["contact"].append((rank, clean))
         candidates[clean] = min(rank, candidates.get(clean, rank))
-    return [url for url, _ in sorted(candidates.items(), key=lambda item: (item[1], item[0]))[:limit]]
+
+    selected: list[str] = []
+    # Balance across categories so careers and news are not starved by about/contact
+    for cat in ("careers", "news", "about", "contact"):
+        if categorized[cat]:
+            categorized[cat].sort(key=lambda x: x[0])
+            top_url = categorized[cat][0][1]
+            if top_url not in selected:
+                selected.append(top_url)
+            if len(selected) >= limit:
+                break
+
+    if len(selected) < limit:
+        for url, _ in sorted(candidates.items(), key=lambda item: (item[1], item[0])):
+            if url not in selected:
+                selected.append(url)
+            if len(selected) >= limit:
+                break
+
+    return selected
 
 
 def _fetch_secondary_page(url: str, *, homepage_domain: str, timeout: float, max_bytes: int) -> tuple[dict[str, Any] | None, list[dict[str, str]], int, int, int, str | None]:
@@ -273,7 +314,28 @@ def fetch_website(url: str | None, *, timeout: float = 15.0, max_bytes: int = 2_
     try:
         assert_public_url(normalized)
     except ValueError as exc:
-        return evidence("website", "blocked", "registry_linked_company_website", normalized, note=str(exc)), {"requests": 0, "bytes": 0, "latencies_ms": []}
+        resolved_alt = False
+        if "Hostname did not resolve" in str(exc):
+            parsed = urllib.parse.urlparse(normalized)
+            host = (parsed.hostname or "").lower()
+            if not host.startswith("www.") and "." in host:
+                alt = urllib.parse.urlunparse((parsed.scheme, "www." + host, parsed.path or "/", "", "", ""))
+                try:
+                    assert_public_url(alt)
+                    normalized = alt
+                    resolved_alt = True
+                except Exception:
+                    pass
+            elif host.startswith("www."):
+                alt = urllib.parse.urlunparse((parsed.scheme, host.removeprefix("www."), parsed.path or "/", "", "", ""))
+                try:
+                    assert_public_url(alt)
+                    normalized = alt
+                    resolved_alt = True
+                except Exception:
+                    pass
+        if not resolved_alt:
+            return evidence("website", "blocked", "registry_linked_company_website", normalized, note=str(exc)), {"requests": 0, "bytes": 0, "latencies_ms": []}
     if not _robots_allowed(normalized, timeout):
         return evidence("website", "blocked", "registry_linked_company_website", normalized, note="robots.txt disallows this user agent"), {"requests": 1, "bytes": 0, "latencies_ms": []}
     started = time.monotonic()

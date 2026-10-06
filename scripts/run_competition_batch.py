@@ -29,21 +29,38 @@ from norway_company_agent.identity import apply_website_identity_gate  # noqa: E
 from norway_company_agent.official import accounting_obligation_assessment, fetch_official_modules  # noqa: E402
 from norway_company_agent.website import fetch_website  # noqa: E402
 from signalpost.discovery.website_discovery import discover_and_verify_website  # noqa: E402
+from signalpost.fetching.budget import RequestBudget  # noqa: E402
 from signalpost.sources.nav_jobs import fetch_nav_jobs  # noqa: E402
 from signalpost.result_contract import build_output_envelope, validate_contract_envelope  # noqa: E402
 
 
-def check_live_network_egress(timeout: float = 1.0) -> bool:
-    """Fast probe to determine whether outbound HTTP egress to Brreg is operational."""
-    try:
-        req = urllib.request.Request(
-            "https://data.brreg.no/enhetsregisteret/api/enheter/810034882",
-            headers={"User-Agent": "signalpost-probe/1.0"},
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
+class Colors:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    RED = "\033[31m"
+
+
+def check_live_network_egress(timeout: float = 4.0) -> bool:
+    """Robust probe to determine whether outbound HTTP egress to Brreg is operational."""
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(
+                "https://data.brreg.no/enhetsregisteret/api/enheter/810034882",
+                headers={"User-Agent": "signalpost-probe/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status == 200:
+                    return True
+        except Exception:
+            if attempt == 0:
+                time.sleep(0.5)
+    return False
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:
@@ -106,7 +123,7 @@ def main() -> None:
         is_live = True
     elif args.mode == "auto":
         # Probe egress
-        is_live = check_live_network_egress(timeout=1.0)
+        is_live = check_live_network_egress(timeout=4.0)
 
     if args.modules:
         requested_modules = [m.strip() for m in args.modules.split(",") if m.strip()]
@@ -120,8 +137,16 @@ def main() -> None:
     if is_live:
         fetch_modules.add("registry_live")
 
-    operations = {"requests": 0, "bytes": 0, "latencies_ms": []}
-    max_requests_budget = 1900
+    budget = RequestBudget(max_requests=1900, soft_limit=1750, max_cost_usd=10.0)
+    strategy = RequestBudget.plan_strategy(len(orgs), is_live)
+
+    mode_label = f"{Colors.GREEN}LIVE{Colors.RESET}" if is_live else f"{Colors.YELLOW}SNAPSHOT{Colors.RESET}"
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}[Signalpost]{Colors.RESET} Starting batch: mode={mode_label}, "
+        f"orgs={Colors.BOLD}{len(orgs)}{Colors.RESET}, workers={args.workers}, "
+        f"budget={Colors.GREEN}{budget.max_requests}{Colors.RESET}",
+        file=sys.stderr,
+    )
 
     def active_operating_candidate(profile: dict) -> bool:
         """Prioritize likely operating entities without relying on employee count alone."""
@@ -144,7 +169,7 @@ def main() -> None:
         return bool(has_contact or industry)
 
     def enrich(profile: dict) -> tuple[dict, dict]:
-        if operations["requests"] >= max_requests_budget:
+        if not budget.can_request():
             # Budget protection: fallback to offline snapshot data
             profile["run_metrics"] = {"requests": 0, "bytes": 0, "latencies_ms": []}
             return profile, profile["run_metrics"]
@@ -156,6 +181,8 @@ def main() -> None:
 
         records, metrics = fetch_official_modules(profile["organisation_number"], target_fetch_modules)
         profile["evidence"].update(records)
+        for m in metrics:
+            budget.record_request(bytes_count=m.bytes_received, latency_ms=m.elapsed_ms)
 
         # Propagate live registry fields into profile if snapshot was missing them
         reg_live_val = (records.get("registry_live") or {}).get("value")
@@ -179,17 +206,25 @@ def main() -> None:
         website_metrics = {"requests": 0, "bytes": 0, "latencies_ms": []}
         nav_metrics = {"requests": 0, "bytes": 0, "latencies_ms": []}
         target_site = profile.get("website") or (records.get("registry_live", {}).get("value", {}).get("website"))
-        if "website" in requested_modules and operations["requests"] < max_requests_budget:
+        if "website" in requested_modules and budget.can_request():
             if target_site:
                 profile["website"] = target_site
                 website_record, website_metrics = fetch_website(target_site)
                 profile["evidence"]["website"] = apply_website_identity_gate(profile, website_record)["website"]
+                for lat in website_metrics.get("latencies_ms", []):
+                    budget.record_request(
+                        bytes_count=website_metrics.get("bytes", 0) // max(1, len(website_metrics.get("latencies_ms", []))),
+                        latency_ms=lat,
+                    )
             else:
                 # Brreg employee counts are sparse. Probe all likely operating entities,
                 # but keep the candidate set bounded and retain the strict identity gate.
                 if is_live and active_operating_candidate(profile):
                     discovered, website_metrics = discover_and_verify_website(
-                        profile, timeout=5.0, max_candidates_to_probe=2
+                        profile,
+                        timeout=5.0,
+                        max_candidates_to_probe=strategy.get("max_probes_per_company", 2),
+                        budget=budget,
                     )
                     if discovered:
                         profile["evidence"]["website"] = discovered
@@ -197,11 +232,21 @@ def main() -> None:
                         if discovered_url:
                             profile["website"] = discovered_url
 
-        if "nav_jobs" in requested_modules and is_live and active_operating_candidate(profile) and operations["requests"] < max_requests_budget:
+        if "nav_jobs" in requested_modules and is_live and strategy.get("fetch_nav_jobs", True) and active_operating_candidate(profile) and budget.can_request():
+            subunits_locs = (profile.get("evidence", {}).get("locations", {}).get("value", {}) or {}).get("locations", [])
+            subunit_orgs = [str(sub.get("org_nr")) for sub in subunits_locs if isinstance(sub, dict) and sub.get("org_nr")]
             nav_record, nav_metrics = fetch_nav_jobs(
-                profile["organisation_number"], profile.get("name"), timeout=5.0
+                profile["organisation_number"],
+                profile.get("name"),
+                subunit_orgs=subunit_orgs,
+                timeout=5.0,
             )
             profile["evidence"]["nav_jobs"] = nav_record
+            for lat in nav_metrics.get("latencies_ms", []):
+                budget.record_request(
+                    bytes_count=nav_metrics.get("bytes", 0) // max(1, len(nav_metrics.get("latencies_ms", []))),
+                    latency_ms=lat,
+                )
 
         metric = {
             "requests": len(metrics) + website_metrics["requests"] + nav_metrics["requests"],
@@ -232,10 +277,19 @@ def main() -> None:
             futures = {pool.submit(enrich, profile): profile["organisation_number"] for profile in pending_profiles}
             for index, future in enumerate(as_completed(futures), 1):
                 profile, metric = future.result()
-                state[profile["organisation_number"]] = profile
-                operations["requests"] += metric["requests"]
-                operations["bytes"] += metric["bytes"]
-                operations["latencies_ms"].extend(metric["latencies_ms"])
+                org_nr = profile["organisation_number"]
+                state[org_nr] = profile
+
+                p_name = (profile.get("name") or org_nr)[:28]
+                rem = budget.remaining_requests()
+                print(
+                    f"{Colors.CYAN}[{index}/{len(pending_profiles)}]{Colors.RESET} "
+                    f"{Colors.BOLD}{p_name:<28}{Colors.RESET} ({org_nr}) "
+                    f"| Req: {Colors.YELLOW}{metric['requests']}{Colors.RESET} "
+                    f"| Budget left: {Colors.GREEN}{rem}{Colors.RESET}",
+                    file=sys.stderr,
+                )
+
                 if index % args.checkpoint_every == 0 or index == len(pending_profiles):
                     checkpoint = [state[org] for org in orgs if org in state]
                     write_jsonl(profiles_output, checkpoint)
@@ -289,9 +343,8 @@ def main() -> None:
     write_jsonl(profiles_output, ordered_profiles)
     write_jsonl(output_path, envelopes)
 
-    latencies = sorted(operations.pop("latencies_ms", []))
-    operations["p50_ms"] = latencies[len(latencies) // 2] if latencies else None
-    operations["p95_ms"] = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))] if latencies else None
+    operations = budget.summary()
+    operations["requests"] = operations["total_outbound_requests"]
 
     report = {
         "run_id": run_id,
@@ -309,6 +362,20 @@ def main() -> None:
     }
 
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    print(
+        f"\n{Colors.BOLD}{Colors.GREEN}============================================================{Colors.RESET}\n"
+        f"{Colors.BOLD}{Colors.GREEN}✓ Signalpost Batch Execution Complete: {len(envelopes)} Envelopes{Colors.RESET}\n"
+        f"{Colors.BOLD}{Colors.GREEN}============================================================{Colors.RESET}\n"
+        f"  {Colors.BOLD}Total Outbound Requests:{Colors.RESET} {Colors.CYAN}{operations['total_outbound_requests']}{Colors.RESET} / {budget.max_requests}\n"
+        f"  {Colors.BOLD}Remaining Budget:{Colors.RESET}         {Colors.GREEN}{operations['remaining_budget']}{Colors.RESET}\n"
+        f"  {Colors.BOLD}Bytes Downloaded:{Colors.RESET}         {operations['bytes_downloaded']:,} bytes\n"
+        f"  {Colors.BOLD}P95 Latency:{Colors.RESET}              {operations.get('p95_latency_ms', 0)} ms\n"
+        f"  {Colors.BOLD}Envelopes Output:{Colors.RESET}         {args.output}\n"
+        f"  {Colors.BOLD}Report Output:{Colors.RESET}            {args.report}\n",
+        file=sys.stderr,
+    )
+
     print(json.dumps(report, ensure_ascii=False, indent=2))
     raise SystemExit(0 if validation["passed"] else 1)
 

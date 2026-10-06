@@ -234,6 +234,10 @@ def build_output_envelope(
     web_evidence = evidence_dict.get("website", {})
     web_val = web_evidence.get("value") or {}
     website_url = profile.get("website") or web_evidence.get("source_url")
+    if website_url and isinstance(website_url, str):
+        website_url = website_url.strip()
+        if not website_url.startswith(("http://", "https://")):
+            website_url = f"https://{website_url}"
 
     identity_assessment = web_val.get("identity_assessment") or {} if isinstance(web_val, dict) else {}
     publishable = identity_assessment.get("publishable", True)
@@ -402,11 +406,25 @@ def build_output_envelope(
     if web_evidence.get("status") == "available" and publishable and isinstance(web_val, dict):
         if web_val.get("jobs"):
             jobs_list.extend(web_val.get("jobs"))
+            if web_ev_id and web_ev_id not in job_evidence_ids:
+                job_evidence_ids.append(web_ev_id)
         for page in web_val.get("pages", []):
             if page.get("jobs"):
+                page_url = page.get("url")
+                if page_url:
+                    page_ev_id = f"ev-{org_number}-{ev_counter}"
+                    ev_counter += 1
+                    evidence_items.append({
+                        "id": page_ev_id,
+                        "source_url": page_url,
+                        "source_class": "company_owned",
+                        "retrieved_at": web_evidence.get("retrieved_at") or completed_at,
+                        "content_sha256": page.get("content_sha256") or ("0" * 64),
+                        "claim_span": page.get("title") or f"Careers page for {profile.get('name')}",
+                    })
+                    if page_ev_id not in job_evidence_ids:
+                        job_evidence_ids.append(page_ev_id)
                 jobs_list.extend(page.get("jobs"))
-        if jobs_list and web_ev_id:
-            job_evidence_ids.append(web_ev_id)
 
     nav_jobs_ev = evidence_dict.get("nav_jobs", {})
     nav_jobs_val = nav_jobs_ev.get("value") or {}
@@ -455,15 +473,39 @@ def build_output_envelope(
     # =========================================================================
     # 7. Optional Verified External Signals (Company Activity, News & Reviews)
     # =========================================================================
-    website_activity = web_val.get("activities") or [] if isinstance(web_val, dict) else []
+    website_activity = []
+    activity_evidence_ids = []
+    if web_evidence.get("status") == "available" and publishable and isinstance(web_val, dict):
+        if web_val.get("activities"):
+            website_activity.extend(web_val.get("activities"))
+            if web_ev_id:
+                activity_evidence_ids.append(web_ev_id)
+        for page in web_val.get("pages", []):
+            if page.get("activities"):
+                page_url = page.get("url")
+                if page_url:
+                    page_ev_id = f"ev-{org_number}-{ev_counter}"
+                    ev_counter += 1
+                    evidence_items.append({
+                        "id": page_ev_id,
+                        "source_url": page_url,
+                        "source_class": "company_owned",
+                        "retrieved_at": web_evidence.get("retrieved_at") or completed_at,
+                        "content_sha256": page.get("content_sha256") or ("0" * 64),
+                        "claim_span": page.get("title") or f"News & activity page for {profile.get('name')}",
+                    })
+                    if page_ev_id not in activity_evidence_ids:
+                        activity_evidence_ids.append(page_ev_id)
+                website_activity.extend(page.get("activities"))
+
     news_ev = evidence_dict.get("public_news")
-    if website_activity and web_ev_id:
+    if website_activity and activity_evidence_ids:
         claim_items.append({
             "field": "public_activity",
             "value": website_activity[:10],
             "availability": "available",
             "confidence": 0.95,
-            "evidence_ids": [web_ev_id],
+            "evidence_ids": activity_evidence_ids,
         })
     elif news_ev and news_ev.get("status") == "available" and (news_ev.get("value") or {}).get("articles"):
         news_ev_id = f"ev-{org_number}-{ev_counter}"
@@ -527,6 +569,22 @@ def build_output_envelope(
     summary_sentences.append(s1)
     if name_val:
         summary_fact_map.append({"statement": s1, "field": "legal_name", "value": name_val, "evidence_ids": [reg_ev_id]})
+    if form_val:
+        summary_fact_map.append({"statement": s1, "field": "legal_form", "value": form_val, "evidence_ids": [reg_ev_id]})
+    if muni_val:
+        summary_fact_map.append({"statement": s1, "field": "municipality", "value": muni_val, "evidence_ids": [reg_ev_id]})
+    if emp_val is not None:
+        summary_fact_map.append({"statement": s1, "field": "employees", "value": emp_val, "evidence_ids": [reg_ev_id]})
+
+    # Industry / Sector
+    industry_info = (reg_val.get("industry") or {}) if isinstance(reg_val, dict) else {}
+    ind_desc = industry_info.get("beskrivelse") or industry_info.get("description")
+    ind_code = industry_info.get("kode") or industry_info.get("code")
+    if ind_desc:
+        code_str = f" (NACE {ind_code})" if ind_code else ""
+        s_ind = f"Registered primary industry activity: {ind_desc}{code_str}."
+        summary_sentences.append(s_ind)
+        summary_fact_map.append({"statement": s_ind, "field": "industry", "value": ind_desc, "evidence_ids": [reg_ev_id]})
 
     # 2. Leadership Statement
     if roles_status == "available" and roles_list:
@@ -542,7 +600,13 @@ def build_output_envelope(
         s2 = "No separate board leadership roles observed in the official register."
         summary_sentences.append(s2)
 
-    # 3. Financial Statement
+    # 3. Locations Statement
+    if subunits_status == "available" and subunits_list:
+        s_loc = f"Maintains {len(subunits_list)} registered operational location{'s' if len(subunits_list) > 1 else ''} in Norway."
+        summary_sentences.append(s_loc)
+        summary_fact_map.append({"statement": s_loc, "field": "locations", "value": len(subunits_list), "evidence_ids": [subunits_ev_id]})
+
+    # 4. Financial Statement
     if fin_records and fin_status == "available":
         latest = fin_records[0]
         period = latest.get("reporting_period") or "latest period"
@@ -559,7 +623,13 @@ def build_output_envelope(
         s3 = "No statutory financial filings on record in the company accounts register."
         summary_sentences.append(s3)
 
-    # 4. Web Presence Statement
+    # 5. Careers & Jobs Statement
+    if jobs_list and job_evidence_ids:
+        s_jobs = f"Active hiring identified with {len(deduped_jobs)} publicly listed job vacancy{'ies' if len(deduped_jobs) > 1 else ''}."
+        summary_sentences.append(s_jobs)
+        summary_fact_map.append({"statement": s_jobs, "field": "jobs", "value": len(deduped_jobs), "evidence_ids": job_evidence_ids})
+
+    # 6. Web Presence Statement
     if website_url and web_evidence.get("status") == "available" and publishable and web_ev_id:
         s4 = f"Verified official corporate website: {website_url}."
         summary_sentences.append(s4)
@@ -567,6 +637,12 @@ def build_output_envelope(
     else:
         s4 = "Permitted public sources did not provide a confidently verified corporate website."
         summary_sentences.append(s4)
+
+    # 7. Public Activity Statement
+    if website_activity and activity_evidence_ids:
+        s_act = f"Identified {len(website_activity)} recent public activities or corporate announcements."
+        summary_sentences.append(s_act)
+        summary_fact_map.append({"statement": s_act, "field": "public_activity", "value": len(website_activity), "evidence_ids": activity_evidence_ids})
 
     full_summary_text = " ".join(summary_sentences)
 

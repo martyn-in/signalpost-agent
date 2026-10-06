@@ -1,8 +1,8 @@
 """Bounded autonomous discovery of official company websites.
 
 Discovery is deliberately conservative: guessed domains are never published directly.
-Every candidate is fetched through the existing safe crawler and must pass the existing
-exact-company identity gate before it can become evidence.
+Every candidate is fetched through the safe crawler and must pass the exact-company
+identity gate before it can become evidence.
 """
 
 from __future__ import annotations
@@ -22,7 +22,12 @@ LEGAL_SUFFIXES = {
 GENERIC_TAILS = {
     "holding", "invest", "eiendom", "group", "gruppen", "norge", "norway",
     "technologies", "technology", "solutions", "consulting", "drift", "service",
-    "tjenester", "utvikling",
+    "tjenester", "utvikling", "forvaltning", "kapital", "finans",
+}
+GENERIC_PREFIXES = {
+    "arkitektfirma", "advokatfirma", "byggmester", "entreprenor", "malermester",
+    "rorlegger", "elektro", "tannlege", "regnskapskontor", "revisjon",
+    "hotell", "restaurant", "klinikk", "transport", "maskin", "bilverksted",
 }
 COMPOUND_DOMAIN_ROOTS = {
     "trevarefabrikk": "trevare",
@@ -46,6 +51,17 @@ def _ascii_tokens(value: str | None) -> list[str]:
     text = str(value or "").casefold().translate(str.maketrans({"æ": "ae", "ø": "o", "å": "a"}))
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     return [t for t in re.findall(r"[a-z0-9]+", text) if t and t not in LEGAL_SUFFIXES]
+
+
+def _norwegian_translit_variants(name: str) -> list[str]:
+    """Generate Norwegian name transliteration variants (e.g. å->aa, ø->oe)."""
+    raw = str(name or "").casefold()
+    variants = [raw]
+    if "å" in raw or "ø" in raw or "æ" in raw:
+        v1 = raw.replace("å", "aa").replace("ø", "oe").replace("æ", "ae")
+        if v1 not in variants:
+            variants.append(v1)
+    return variants
 
 
 def _authoritative_site_candidates(value: str) -> list[str]:
@@ -72,7 +88,7 @@ def _authoritative_site_candidates(value: str) -> list[str]:
 
 
 def generate_domain_candidates(name: str, municipality: str | None = None) -> list[str]:
-    """Generate a small, high-value set of plausible .no/.com official domains."""
+    """Generate a high-value set of plausible .no/.com official domains."""
     tokens = _ascii_tokens(name)
     if not tokens:
         return []
@@ -102,11 +118,25 @@ def generate_domain_candidates(name: str, municipality: str | None = None) -> li
         add(trimmed[0])
     add("-".join(trimmed))
 
+    # Generic prefix stripping (e.g. "arkitektfirma jon vikoren" -> "jonvikoren", "vikoren")
+    if len(trimmed) >= 2 and trimmed[0] in GENERIC_PREFIXES:
+        sub = trimmed[1:]
+        add("".join(sub))
+        add("-".join(sub))
+        if len(sub) >= 2:
+            add(sub[-1])
+
+    # Transliteration variant check (aa for å, oe for ø)
+    for variant in _norwegian_translit_variants(name):
+        var_toks = _ascii_tokens(variant)
+        if var_toks and var_toks != tokens:
+            add("".join(var_toks))
+            if len(var_toks) >= 2:
+                add("-".join(var_toks[:2]))
+
     urls: list[str] = []
     for base in bases:
         for tld in (".no", ".com"):
-            # Probe one canonical origin per base. Correct sites normally redirect
-            # between bare/www themselves; duplicating both wastes the request budget.
             url = f"https://{base}{tld}"
             if url not in urls:
                 urls.append(url)
@@ -118,10 +148,11 @@ def discover_and_verify_website(
     *,
     timeout: float = 5.0,
     max_candidates_to_probe: int = 4,
+    budget: Any = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Probe bounded domain candidates and return only an identity-verified website."""
     metrics = {"requests": 0, "bytes": 0, "latencies_ms": [], "candidates_probed": 0}
-    existing = str(profile.get("website") or "").strip()
+    existing = str(profile.get("website") or profile.get("hjemmeside") or "").strip()
     candidates: list[str] = [existing] if existing else []
 
     # Brreg contact fields are authoritative discovery hints. A corporate email
@@ -129,12 +160,12 @@ def discover_and_verify_website(
     # still has to pass the same exact-company website identity gate.
     reg_live = ((profile.get("evidence") or {}).get("registry_live") or {}).get("value") or {}
     locations = (((profile.get("evidence") or {}).get("locations") or {}).get("value") or {}).get("locations") or []
-    hint_rows = [reg_live] + [row for row in locations if isinstance(row, dict)]
+    hint_rows = [profile, reg_live] + [row for row in locations if isinstance(row, dict)]
     for row in hint_rows:
-        site = str(row.get("website") or "").strip()
+        site = str(row.get("website") or row.get("hjemmeside") or "").strip()
         if site:
             candidates.extend(_authoritative_site_candidates(site))
-        email = str(row.get("email") or "").strip().casefold()
+        email = str(row.get("email") or row.get("epostadresse") or "").strip().casefold()
         if "@" in email:
             host = email.rsplit("@", 1)[-1].strip(".")
             if host and host not in GENERIC_EMAIL_HOSTS and "." in host:
@@ -150,14 +181,31 @@ def discover_and_verify_website(
         seen.add(candidate)
         if metrics["candidates_probed"] >= max_candidates_to_probe:
             break
+
+        # Budget gate: reserve 2 requests for probing this candidate
+        if budget is not None and not budget.reserve(2, priority="low"):
+            break
+
         metrics["candidates_probed"] += 1
         try:
             record, m = fetch_website(candidate, timeout=timeout)
         except Exception:
+            if budget is not None:
+                budget.refund(2)
             continue
-        metrics["requests"] += int(m.get("requests", 0) or 0)
+
+        reqs = int(m.get("requests", 0) or 0)
+        metrics["requests"] += reqs
         metrics["bytes"] += int(m.get("bytes", 0) or 0)
         metrics["latencies_ms"].extend(m.get("latencies_ms", []) or [])
+
+        # Adjust budget if actual requests differed from reservation
+        if budget is not None:
+            if reqs < 2:
+                budget.refund(2 - reqs)
+            elif reqs > 2:
+                budget.reserve(reqs - 2)
+
         gated = apply_website_identity_gate(profile, record)
         assessment = gated.get("assessment") or {}
         verified = gated.get("website")
